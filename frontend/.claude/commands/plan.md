@@ -19,8 +19,8 @@ Spec: $ARGUMENTS
    - Pages — `src/app/<route>/page.tsx`, server components by default, `'use client'` only where
      interactivity requires it.
    - UI — Radix primitives + Tailwind + `cn()` from `src/lib/utils.ts`.
-   - Verify the contract against `../backend/openapi.json`, and the scored behaviour against
-     `SETUP.md` section 5a.
+   - Verify the contract against `../backend/openapi.json`, and the scored behaviour against the
+     `http-discipline` skill.
 
 ## Build the plan with these sections
 

@@ -11,8 +11,8 @@ Task: $ARGUMENTS
 ## Before writing
 
 - **Source of requirements.** The product requirements for this repo live in `../README.md` (the task
-  as handed over) and in `SETUP.md`. If `$ARGUMENTS` is plain text, work from the text, but reconcile
-  it with those two files and say when they disagree.
+  as handed over). If `$ARGUMENTS` is plain text, work from the text, but reconcile it with that file
+  and say when they disagree.
 - **Ground it in real code and in the API.** Read the relevant parts of the project so the spec
   reflects the actual state, not guesses. Landmarks:
   - `src/lib/api/` — the server-side API layer (client, session store, `callApi`)
@@ -20,7 +20,7 @@ Task: $ARGUMENTS
   - `src/app/**` — pages (`/login`, `/search`, `/sessions/[id]`)
   - `../backend/openapi.json` — the API contract (methods, paths, required fields); `/docs` when the
     server is up
-  - `SETUP.md` section 5a — the HTTP behaviour the backend scores
+  - the `http-discipline` skill — the HTTP behaviour the backend scores
 - **Do not invent ambiguity.** Anything uncertain goes into "Open questions", not into requirements.
 
 ## Spec structure (use exactly this order and these headings)

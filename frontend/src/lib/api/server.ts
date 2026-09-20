@@ -2,7 +2,7 @@ import 'server-only'
 
 import { ApiError, rawFetch, type ApiRequest, type ApiResponse } from './client'
 import { accessTokenFor, refreshAfterUnauthorized, SessionGone } from './session-store'
-import { currentSessionId } from '../session'
+import { currentSessionId } from '@lib/session'
 
 /** Authorized server-side call: refreshes once on a 401 and replays the request exactly once. */
 export async function callApi<T>(req: Omit<ApiRequest, 'token'>): Promise<ApiResponse<T>> {

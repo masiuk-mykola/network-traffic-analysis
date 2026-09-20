@@ -35,7 +35,7 @@ The API has CORS off and takes a bearer token, so the browser never talks to it 
 ## Rules the backend scores
 
 `uv run capture-api report` grades the client and must show no FAIL. Before changing the data layer,
-read section 5a of `SETUP.md`; the short version:
+read the `http-discipline` skill; the short version:
 
 - one refresh in flight per family — a reused refresh token kills the session;
 - no authorized request later than 5 s after logout; cancel queries, close streams, clear the cache;
@@ -48,9 +48,12 @@ read section 5a of `SETUP.md`; the short version:
 ## Conventions
 
 - Comments and strings in code are English, and comments are rare — only where the code alone does
-  not explain itself. `SETUP.md` is Ukrainian and stays that way.
+  not explain itself.
 - Prettier owns formatting: single quotes, no semicolons, width 100. Run `npm run format`.
-- Radix primitives (`@radix-ui/react-*`), not shadcn/ui. `cn()` from `src/lib/utils.ts` for classes.
+- Radix primitives (`@radix-ui/react-*`), not shadcn/ui. `cn()` from `@lib/utils` for classes.
+- Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
+  `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
+  keep relative imports only inside the same folder.
 - Unit tests live next to the code as `*.test.ts(x)`; Playwright specs live in `e2e/`.
 - Conventional commits (commitlint + husky run from the repo root).
 

@@ -24,7 +24,7 @@ verify it yourself.
 - If available, findings from the `code-reviewer` agent and the Definition of Done
   (`.claude/rules/common/05-definition-of-done.md`).
 
-Read `CLAUDE.md` and `SETUP.md` before verdicts — "done" here means this repo's real gates pass.
+Read `CLAUDE.md` before verdicts — "done" here means this repo's real gates pass.
 
 ## What this repo's checks actually are
 

@@ -16,7 +16,7 @@ Comprehensive security and quality review of uncommitted changes.
 - XSS: `dangerouslySetInnerHTML`, untrusted API data rendered as HTML
 - Missing input validation on route handler payloads
 
-**HTTP discipline (CRITICAL–HIGH, see SETUP.md 5a):**
+**HTTP discipline (CRITICAL–HIGH, see the `http-discipline` skill):**
 
 - More than one refresh in flight per family; a refresh token used twice
 - Authorized requests after logout; queries not cancelled, streams not closed, cache not cleared

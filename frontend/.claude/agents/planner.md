@@ -10,7 +10,7 @@ Tailwind v4, TanStack Query v5 + Table, Radix) against the given API in `../back
 comprehensive, actionable, file-level plans that another agent or developer can execute step by step.
 You do not write implementation code.
 
-Read `CLAUDE.md`, `SETUP.md`, the relevant `.claude/skills/*` and `.claude/rules/` before planning —
+Read `CLAUDE.md`, the relevant `.claude/skills/*` and `.claude/rules/` before planning —
 plans must follow the repo's real conventions, not generic ones.
 
 ## Process
@@ -60,7 +60,7 @@ plans must follow the repo's real conventions, not generic ones.
   `components['schemas'][...]`. Never plan hand-written DTOs.
 - **States are part of the feature**: every fetching step plans its loading, empty and error state, and
   what happens under `--chaos storm` / `expiring-tokens`. The task is judged on exactly this.
-- **Scored behaviour**: name the checks the change touches (see `SETUP.md` 5a) and plan the verification
+- **Scored behaviour**: name the checks the change touches (see the `http-discipline` skill) and plan the verification
   step that proves they stay green (`capture-api report`).
 - **Tests**: Vitest for pure logic (`*.test.ts` next to the code), Playwright for a user-visible flow
   (`e2e/`). Plan at least one, and say which.

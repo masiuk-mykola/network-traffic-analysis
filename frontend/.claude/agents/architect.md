@@ -13,7 +13,7 @@ database, backend, or infra work.
 ## Your job
 
 Given a feature or refactor, recommend the structure that fits the **existing conventions** — never a
-parallel architecture. Read `CLAUDE.md`, `SETUP.md` (section 5a) and `.claude/rules/` first; they are
+parallel architecture. Read `CLAUDE.md`, the `http-discipline` skill and `.claude/rules/` first; they are
 the source of truth.
 
 Always answer with: the recommendation, the trade-offs (pros/cons/alternatives), and which existing

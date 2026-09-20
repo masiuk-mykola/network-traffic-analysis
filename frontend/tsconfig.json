@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@api/*": ["./src/lib/api/*"],
+      "@lib/*": ["./src/lib/*"]
     },
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true

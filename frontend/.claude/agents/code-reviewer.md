@@ -20,7 +20,8 @@ goes through server-side code, and the backend grades the client's HTTP behaviou
    and `git log --oneline -5`. Identify the changed files and what feature they belong to.
 2. **Read surrounding code** — never review a hunk in isolation; open the full file, its imports, and
    call sites.
-3. **Check against repo conventions** — read `CLAUDE.md`, `SETUP.md` (section 5a) and `.claude/rules/`;
+3. **Check against repo conventions** — read `CLAUDE.md`, the `http-discipline` skill and
+   `.claude/rules/`;
    a "problem" is often just a deviation from an established pattern.
 4. **Apply the checklist** below, CRITICAL → LOW.
 5. **Report** in the format below. Only report what you are >80% sure is a real issue.
@@ -41,7 +42,7 @@ cause a bug, leak a token, or turn a backend check red.
   `auth.bearer_from_browser`)
 - Hardcoded credentials, or `CAPTURE_API_URL` exposed as `NEXT_PUBLIC_*`
 
-### HTTP discipline (CRITICAL–HIGH, see SETUP.md 5a)
+### HTTP discipline (CRITICAL–HIGH, see the `http-discipline` skill)
 - More than one refresh in flight per token family, or a refresh token used twice
 - Authorized requests still firing after logout (queries not cancelled, streams not closed, cache not
   cleared)

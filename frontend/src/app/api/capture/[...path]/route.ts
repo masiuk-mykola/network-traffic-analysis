@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 
-import { ApiError } from '@/lib/api/client'
-import { callApi } from '@/lib/api/server'
-import { SessionGone } from '@/lib/api/session-store'
+import { ApiError } from '@api/client'
+import { callApi } from '@api/server'
+import { SessionGone } from '@api/session-store'
 
 /** The browser calls this instead of the API, which has CORS off and expects a bearer token. */
 export async function GET(request: Request, ctx: RouteContext<'/api/capture/[...path]'>) {

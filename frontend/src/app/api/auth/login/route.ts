@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 
-import { ApiError, rawFetch, type TokenPair } from '@/lib/api/client'
-import { putSession } from '@/lib/api/session-store'
-import { newSessionId, setSessionCookie } from '@/lib/session'
+import { ApiError, rawFetch, type TokenPair } from '@api/client'
+import { putSession } from '@api/session-store'
+import { newSessionId, setSessionCookie } from '@lib/session'
 
 export async function POST(request: Request) {
   const { email, password } = (await request.json()) as { email?: string; password?: string }

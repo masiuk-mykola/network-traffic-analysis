@@ -6,8 +6,7 @@ description: Use whenever you touch anything that talks to the capture API — a
 # HTTP discipline — the rules the backend scores
 
 The API in `../backend` watches how this client behaves and issues PASS/WARN/FAIL per check
-(`capture-api report`). The rules below are requirements. `SETUP.md` section 5a is the same list in
-Ukrainian with more context.
+(`capture-api report`). The rules below are requirements.
 
 ## The invariants
 

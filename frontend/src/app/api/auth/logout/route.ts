@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 
-import { callApi } from '@/lib/api/server'
-import { dropSession, SessionGone } from '@/lib/api/session-store'
-import { clearSessionCookie, currentSessionId } from '@/lib/session'
+import { callApi } from '@api/server'
+import { dropSession, SessionGone } from '@api/session-store'
+import { clearSessionCookie, currentSessionId } from '@lib/session'
 
 export async function POST() {
   const sid = await currentSessionId()

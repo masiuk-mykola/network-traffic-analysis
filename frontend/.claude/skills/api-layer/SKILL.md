@@ -41,7 +41,7 @@ handler and reuse it for the retry of the same logical action.
 
 - One `queryKey` shape per resource, exported and reused — duplicate GETs are scored.
 - The hook owns loading, empty and error states; the component renders them.
-- Retry policy is already centralized in `src/lib/query-retry.ts` — do not override `retry` per hook
+- Retry policy is already centralized in `@lib/query-retry` — do not override `retry` per hook
   unless the endpoint genuinely differs, and never make it retry a 4xx.
 - Paginate with the cursor the server returned, verbatim, through `getNextPageParam`.
 - Poll with backoff via `refetchInterval`, and stop polling when the job is done.

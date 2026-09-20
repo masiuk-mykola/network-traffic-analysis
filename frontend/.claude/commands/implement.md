@@ -26,8 +26,8 @@ Plan: $ARGUMENTS
 - Follow this repo's conventions — do not invent parallel patterns:
   - API calls — `rawFetch` → `callApi` → a route handler under `src/app/api/**` → a React Query hook.
     Nothing in the browser touches `CAPTURE_API_URL`. Reuse the `api-layer` skill.
-  - HTTP behaviour — the rules in the `http-discipline` skill and `SETUP.md` section 5a are
-    requirements, not suggestions; the backend scores them.
+  - HTTP behaviour — the rules in the `http-discipline` skill are requirements, not suggestions;
+    the backend scores them.
   - Types — from the generated `src/lib/api/schema.d.ts` (`npm run api:types`), never hand-written,
     never edited by hand.
   - Components — server by default, `'use client'` only on the leaf that needs it; Radix primitives +

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { retry, retryDelay } from './query-retry'
+import { retry, retryDelay } from '@lib/query-retry'
 
 describe('retry', () => {
   it('does not retry 4xx', () => {
