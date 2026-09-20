@@ -1,0 +1,55 @@
+name: capture-api
+
+# The API in a container, if you would rather not install uv.
+#
+#   docker compose up -d --build     # http://localhost:8700
+#   docker compose logs -f
+#   docker compose down
+#
+# Settings live in backend/.env exactly as they do without Docker — copy
+# backend/.env.example and edit it. CAP_HOST and CAP_PORT are fixed here so the
+# published port and the health check stay valid; publish somewhere else with
+# CAP_HOST_PORT=8800 docker compose up -d.
+
+services:
+  simulator:
+    build:
+      context: ./backend
+    image: capture-api:local
+    container_name: capture-api
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 5s
+    ports:
+      - "${CAP_HOST_PORT:-8700}:8700"
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      CAP_HOST: 0.0.0.0
+      CAP_PORT: "8700"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8700/v1/health', timeout=2).status == 200 else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s
+
+  web:
+    build:
+      context: ./frontend
+    image: capture-web:local
+    container_name: capture-web
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    environment:
+      CAPTURE_API_URL: http://simulator:8700
+    depends_on:
+      simulator:
+        condition: service_healthy
