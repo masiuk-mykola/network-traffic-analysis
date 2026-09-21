@@ -9,10 +9,12 @@ import type { components } from '@api/schema'
 import { formatBytes, formatTimestamp } from '@lib/format'
 import { isNotFound, type SessionStatus } from '@lib/session/session-state'
 import { useProtocolSchema } from '@lib/session/use-protocol-schema'
+import { readDnsExchange } from '@lib/session/dns'
 import { useSession } from '@lib/session/use-session'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Button } from '@/components/ui'
 
+import { DnsExchange } from './dns-exchange'
 import { SessionSummary } from './session-summary'
 import { Transaction } from './transaction'
 
@@ -55,12 +57,17 @@ export function SessionView({
   }
 
   const found = session.data
+  // Written properly for one protocol; every other one has the generic view below, and so does this
+  // one — specialising must not hide a field the layout does not know about.
+  const dns = readDnsExchange(found.decoded)
 
   return (
     <div className="space-y-6">
       <div>{back}</div>
 
       <SessionSummary session={found} />
+
+      {dns ? <DnsExchange exchange={dns} risk={found.risk} detections={found.detections} /> : null}
 
       <Transaction
         decoded={found.decoded}

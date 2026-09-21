@@ -51,7 +51,11 @@ const V2_DECODED = {
     transaction_id: 59322,
     query: { name: 'prn-16.quillmere.example', type: 'A' },
     rcode: { code: 0, name: 'NOERROR' },
-    answers: [{ data: '10.20.0.7' }, { data: '10.20.0.8' }],
+    flags: { qr: true, aa: true, tc: false, rd: true, ra: true },
+    answers: [
+      { name: 'prn-16.quillmere.example', type: 'A', ttl: 3600, data: '10.20.0.7' },
+      { name: 'prn-16.quillmere.example', type: 'A', ttl: 60, data: '10.20.0.8' },
+    ],
   },
 }
 
@@ -60,8 +64,10 @@ const V2_DECODED = {
 const V1_DECODED = {
   dns: {
     transaction_id: '6001',
-    rcode: '2',
-    authority: { name: 'example.org', type: 'SOA' },
+    query: { name: 'c81e40ba.packages.example.net', type: 'A', class: 'IN' },
+    rcode: '3',
+    flags: { qr: true, rd: true, ra: true },
+    authority: { name: 'example.org', type: 'SOA', ttl: '3600' },
   },
 }
 
@@ -83,6 +89,93 @@ function renderView(initialStatus: SessionStatus) {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+const NXDOMAIN_RISK = {
+  score: 36,
+  band: 'low',
+  reasons: [{ code: 'nxdomain_burst', label: 'Burst of NXDOMAIN answers', mitre: 'T1568.002' }],
+}
+
+describe('SessionView, for a DNS session', () => {
+  it('reads as an exchange: the question, the response, and the records', async () => {
+    renderView(session({ decoded: V2_DECODED, decoder: 'dns/2' }))
+
+    const exchange = await screen.findByRole('region', { name: 'DNS exchange' })
+    expect(exchange).toHaveTextContent('prn-16.quillmere.example')
+    expect(exchange).toHaveTextContent('NOERROR')
+    expect(exchange).toHaveTextContent('Answers')
+    expect(exchange).toHaveTextContent('10.20.0.7')
+  })
+
+  it('names a response code the older decoder gave as a bare number', async () => {
+    renderView(session({ decoded: V1_DECODED }))
+
+    expect(await screen.findByRole('region', { name: 'DNS exchange' })).toHaveTextContent(
+      'NXDOMAIN',
+    )
+  })
+
+  it('shows the single authority record the older decoder carries', async () => {
+    renderView(session({ decoded: V1_DECODED }))
+
+    const exchange = await screen.findByRole('region', { name: 'DNS exchange' })
+    expect(exchange).toHaveTextContent('Authority')
+    expect(exchange).toHaveTextContent('example.org')
+  })
+
+  it('states the flags that are set, in words', async () => {
+    renderView(session({ decoded: V2_DECODED, decoder: 'dns/2' }))
+
+    expect(await screen.findByRole('region', { name: 'DNS exchange' })).toHaveTextContent(
+      'response, authoritative, recursion desired, recursion available',
+    )
+  })
+
+  it('carries the server’s reason for the risk next to the transaction', async () => {
+    renderView(session({ decoded: V1_DECODED, risk: NXDOMAIN_RISK }))
+
+    const flagged = await screen.findByRole('list', { name: 'What the server flagged' })
+    expect(flagged).toHaveTextContent('Burst of NXDOMAIN answers')
+    expect(flagged).toHaveTextContent('T1568.002')
+  })
+
+  it('offers to copy the name that was asked for', async () => {
+    renderView(session({ decoded: V2_DECODED, decoder: 'dns/2' }))
+
+    await screen.findByRole('region', { name: 'DNS exchange' })
+    expect(screen.getByRole('button', { name: 'Copy name' })).toBeVisible()
+  })
+
+  it('still shows everything decoded, including what the layout does not place', async () => {
+    renderView(session({ decoded: V2_DECODED, decoder: 'dns/2' }))
+
+    await screen.findByRole('region', { name: 'DNS exchange' })
+    expect(await screen.findByRole('region', { name: 'Transaction' })).toHaveTextContent(
+      'Transaction id',
+    )
+    expect(screen.getByRole('region', { name: 'Not described by the schema' })).toHaveTextContent(
+      'dns.query.type',
+    )
+  })
+})
+
+describe('SessionView, for any other protocol', () => {
+  it('has no exchange, and the generic view as before', async () => {
+    renderView(
+      session({
+        protocol: 'tls',
+        decoder: 'tls/2',
+        decoded: { tls: { sni: 'ads.example.net', version: 'TLS1.2' } },
+      }),
+    )
+
+    await screen.findByRole('region', { name: 'Not described by the schema' })
+    expect(screen.queryByRole('region', { name: 'DNS exchange' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Not described by the schema' })).toHaveTextContent(
+      'ads.example.net',
+    )
+  })
 })
 
 describe('SessionView', () => {

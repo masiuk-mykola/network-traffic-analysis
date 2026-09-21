@@ -45,6 +45,34 @@ test('the transaction is labelled the way the server describes it', async ({ pag
   await expect(transaction).toContainText('Query name')
 })
 
+test('a DNS session reads as an exchange, and asks for nothing extra', async ({ page }) => {
+  await signIn(page)
+  await startSearch(page)
+  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+
+  const dnsRow = page.getByRole('row').filter({ hasText: 'dns' }).first()
+  await expect(dnsRow).toBeVisible({ timeout: 20_000 })
+
+  const asked: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/api/capture/')) asked.push(new URL(request.url()).pathname)
+  })
+  await dnsRow.click()
+
+  const exchange = page.getByRole('region', { name: 'DNS exchange' })
+  await expect(exchange).toBeVisible({ timeout: 15_000 })
+  await expect(exchange).toContainText('Question')
+  await expect(exchange).toContainText('Response')
+  await expect(page.getByRole('button', { name: 'Copy name' })).toBeVisible()
+  // The generic view stays, so nothing decoded is hidden by the layout.
+  await expect(page.getByRole('region', { name: 'Not described by the schema' })).toBeVisible()
+
+  // The exchange is read out of the session the screen already has: the only reads are the session
+  // itself and the description of its protocol.
+  await page.waitForTimeout(2_000)
+  expect(asked.filter((path) => !path.includes('meta/schema')).sort()).toEqual([])
+})
+
 test('an address naming no session says so, and asks the server once', async ({ page }) => {
   await signIn(page)
 

@@ -104,6 +104,11 @@ read the `http-discipline` skill; the short version:
   given payload; nothing is guessed into a label, and every decoded value the description did not
   claim is shown under its own path, marked as undescribed.
 - Session ids are uint64 strings. Nothing parses one, and nothing formats one as a number.
+- DNS has a layout of its own above the generic list, and the generic list stays: specialising a
+  protocol must never hide a field the layout does not know about. The two decoder generations are
+  reconciled in one reader (`@lib/session/dns`), which is also where a bare response code is named —
+  screens never see two shapes. What is anomalous is what the server says is anomalous: its risk
+  reasons and rules, in its words; the interface adds no judgement of its own.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.
