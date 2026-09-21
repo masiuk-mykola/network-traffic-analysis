@@ -175,7 +175,12 @@ export function QueryForm({
           query={query}
           fields={fields.data ?? {}}
           problem={problem}
-          running={running.data}
+          watching={{
+            searchId: query.searchId,
+            status: running.data,
+            error: running.error,
+            isPending: running.isPending,
+          }}
           onStarted={(search) => setState({ ...query, searchId: search.id })}
         />
       </div>

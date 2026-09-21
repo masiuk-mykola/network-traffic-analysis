@@ -30,7 +30,7 @@ test('a search starts and says so', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Run search' }).click()
 
-  await expect(page.getByText(/^Search .+ — (queued|running|done)/)).toBeVisible({
+  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
     timeout: 15_000,
   })
   await expect(page).toHaveURL(/search=/)
@@ -48,7 +48,9 @@ test('pressing twice starts one job, not two', async ({ page }) => {
 
   const button = page.getByRole('button', { name: 'Run search' })
   await button.click()
-  await expect(page.getByText(/^Search /)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
+    timeout: 15_000,
+  })
   const first = new URL(page.url()).searchParams.get('search')
 
   // Nothing changed, so this is the same search — sending it again would be an identical body
@@ -69,7 +71,9 @@ test('the started search survives a reload', async ({ page }) => {
   await page.reload()
 
   expect(page.url()).toBe(url)
-  await expect(page.getByText(/^Search /)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
+    timeout: 15_000,
+  })
 })
 
 test('a changed query starts another search and frees the first slot', async ({ page }) => {
@@ -81,11 +85,15 @@ test('a changed query starts another search and frees the first slot', async ({ 
   })
 
   await page.getByRole('button', { name: 'Run search' }).click()
-  await expect(page.getByText(/^Search /)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
+    timeout: 15_000,
+  })
 
   await page.getByRole('listitem').filter({ hasText: 'DC East' }).getByRole('checkbox').click()
   await page.getByRole('button', { name: 'Run search' }).click()
-  await expect(page.getByText(/^Search /)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
+    timeout: 15_000,
+  })
 
   expect(verbs.filter((verb) => verb === 'DELETE')).toHaveLength(1)
 })

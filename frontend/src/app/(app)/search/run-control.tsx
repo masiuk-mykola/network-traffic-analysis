@@ -4,13 +4,14 @@ import { Loader2, TriangleAlert } from 'lucide-react'
 
 import { describeFailure } from '@api/failure'
 import type { components } from '@api/schema'
-import { formatCount } from '@lib/format'
 import type { FieldCatalogue } from '@lib/search/condition'
 import type { QueryState } from '@lib/search/query-params'
 import { toSearchBody } from '@lib/search/search-body'
 import { useRunSearch } from '@lib/search/use-run-search'
 import { useCountdown } from '@lib/use-countdown'
 import { Button } from '@/components/ui'
+
+import { SearchProgress } from './search-progress'
 
 type Search = components['schemas']['Search']
 
@@ -20,10 +21,16 @@ type RunControlProps = {
   /** Why the query cannot be run yet, if it cannot. */
   problem: string | null
   onStarted: (search: Search) => void
-  running: Search | undefined
+  /** The job this screen is watching, if any, with how the watching itself is going. */
+  watching: {
+    searchId: string | null
+    status: Parameters<typeof SearchProgress>[0]['status']
+    error: unknown
+    isPending: boolean
+  }
 }
 
-export function RunControl({ query, fields, problem, onStarted, running }: RunControlProps) {
+export function RunControl({ query, fields, problem, onStarted, watching }: RunControlProps) {
   const run = useRunSearch(onStarted)
   const failure = run.error ? describeFailure(run.error) : null
 
@@ -40,16 +47,9 @@ export function RunControl({ query, fields, problem, onStarted, running }: RunCo
             if (body) run.mutate(body)
           }}
         />
-
-        {running ? (
-          <p className="text-muted text-sm">
-            Search {running.id} — {running.state}
-            {running.progress.matched === undefined
-              ? null
-              : `, ${formatCount(running.progress.matched)} matched so far`}
-          </p>
-        ) : null}
       </div>
+
+      <SearchProgress {...watching} />
 
       {failure ? (
         <p role="alert" className="text-danger text-sm">
@@ -57,9 +57,9 @@ export function RunControl({ query, fields, problem, onStarted, running }: RunCo
         </p>
       ) : null}
 
-      {running?.warnings.length ? (
+      {warningsOf(watching.status).length ? (
         <ul className="space-y-1">
-          {running.warnings.map((warning) => (
+          {warningsOf(watching.status).map((warning) => (
             <li
               key={`${warning.code}-${warning.sensor_id ?? ''}`}
               className="text-muted flex items-start gap-2 text-xs"
@@ -75,6 +75,11 @@ export function RunControl({ query, fields, problem, onStarted, running }: RunCo
       ) : null}
     </div>
   )
+}
+
+/** A discarded job has no warnings to report; a running or finished one may. */
+function warningsOf(status: RunControlProps['watching']['status']): Search['warnings'] {
+  return status && !('expired' in status) ? status.warnings : []
 }
 
 /**

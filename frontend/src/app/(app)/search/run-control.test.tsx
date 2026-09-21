@@ -62,7 +62,7 @@ function renderControl(
         query={query}
         fields={FIELDS}
         problem={null}
-        running={undefined}
+        watching={{ searchId: null, status: undefined, error: null, isPending: false }}
         onStarted={onStarted}
         {...props}
       />
@@ -168,12 +168,17 @@ describe('RunControl', () => {
 
   it('shows what the job warns about', () => {
     renderControl(started, {
-      running: {
-        ...JOB,
-        warnings: [
-          { code: 'sensor_unreadable', sensor_id: 'harbor-branch', detail: 'Point unreadable' },
-        ],
-      } as unknown as Search,
+      watching: {
+        searchId: JOB.id,
+        status: {
+          ...JOB,
+          warnings: [
+            { code: 'sensor_unreadable', sensor_id: 'harbor-branch', detail: 'Point unreadable' },
+          ],
+        } as unknown as Search,
+        error: null,
+        isPending: false,
+      },
     })
 
     expect(screen.getByText(/point unreadable/i)).toBeInTheDocument()

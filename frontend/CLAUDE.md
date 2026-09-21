@@ -69,6 +69,9 @@ read the `http-discipline` skill; the short version:
   a 401 redirects — an unreachable API reaches the error boundary instead.
 - A session that dies mid-use is handled once, centrally: every browser read reports through
   `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
+- A running search is polled with a backoff (half a second doubling to five), the interval comes
+  from the job's state so it cannot outlive it, and a hidden tab asks nothing. A 410 means the
+  server discarded an unwatched job — an ending to explain, not an error.
 - Starting a search is a write, so it has its own handlers under `src/app/api/searches`; reads
   still go through the proxy. The idempotency label is derived from the query, so a retry replays
   the job already started, an unchanged query does not start a second one, and a changed query
