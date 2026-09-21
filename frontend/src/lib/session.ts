@@ -7,8 +7,8 @@ import { randomUUID } from 'node:crypto'
 export const SESSION_COOKIE = 'capture_sid'
 
 export async function currentSessionId(): Promise<string | undefined> {
-  const jar = await cookies()
-  return jar.get(SESSION_COOKIE)?.value
+  const cookieStore = await cookies()
+  return cookieStore.get(SESSION_COOKIE)?.value
 }
 
 export function newSessionId(): string {
@@ -16,8 +16,8 @@ export function newSessionId(): string {
 }
 
 export async function setSessionCookie(id: string): Promise<void> {
-  const jar = await cookies()
-  jar.set(SESSION_COOKIE, id, {
+  const cookieStore = await cookies()
+  cookieStore.set(SESSION_COOKIE, id, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -26,6 +26,6 @@ export async function setSessionCookie(id: string): Promise<void> {
 }
 
 export async function clearSessionCookie(): Promise<void> {
-  const jar = await cookies()
-  jar.delete(SESSION_COOKIE)
+  const cookieStore = await cookies()
+  cookieStore.delete(SESSION_COOKIE)
 }

@@ -1,6 +1,11 @@
 import 'server-only'
 
+import type { ZodType } from 'zod'
+
+import { parseRetryAfter } from './retry-after'
 import type { components } from './schema'
+
+export { parseRetryAfter }
 
 export type ErrorBody = components['schemas']['ErrorBody']
 export type TokenPair = components['schemas']['TokenPair']
@@ -24,23 +29,13 @@ export class ApiError extends Error {
   }
 }
 
-/** The API sends `Retry-After` as seconds (429/503) or as an HTTP-date (login). */
-export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
-  if (!value) return null
-  const seconds = Number(value)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
-  const date = Date.parse(value)
-  if (Number.isNaN(date)) return null
-  return Math.max(0, date - now)
-}
-
 function baseUrl(): string {
   const url = process.env.CAPTURE_API_URL
   if (!url) throw new Error('CAPTURE_API_URL is not set')
   return url.replace(/\/+$/, '')
 }
 
-export type ApiRequest = {
+export type ApiRequest<T = unknown> = {
   method?: string
   path: string
   query?: URLSearchParams
@@ -49,6 +44,8 @@ export type ApiRequest = {
   token?: string
   timeoutMs?: number
   signal?: AbortSignal
+  /** Validates the response body. Use the generated schemas from `./generated/zod.gen`. */
+  schema?: ZodType<T>
 }
 
 export type ApiResponse<T> = {
@@ -57,8 +54,24 @@ export type ApiResponse<T> = {
   headers: Headers
 }
 
+/**
+ * Raised when the API answers with a body the schema does not accept. It stays on the server:
+ * the browser gets a generic 502, because the details describe our upstream, not the user's request.
+ */
+export class SchemaMismatchError extends Error {
+  readonly path: string
+  readonly issues: string[]
+
+  constructor(path: string, issues: string[]) {
+    super(`Unexpected response shape from ${path}`)
+    this.name = 'SchemaMismatchError'
+    this.path = path
+    this.issues = issues
+  }
+}
+
 /** One raw call: no retries and no refresh, so refresh stays single-flight in `session-store`. */
-export async function rawFetch<T>(req: ApiRequest): Promise<ApiResponse<T>> {
+export async function rawFetch<T>(req: ApiRequest<T>): Promise<ApiResponse<T>> {
   const { method = 'GET', path, query, body, headers = {}, token, timeoutMs, signal } = req
   const url = `${baseUrl()}${path}${query && [...query].length > 0 ? `?${query}` : ''}`
 
@@ -86,7 +99,20 @@ export async function rawFetch<T>(req: ApiRequest): Promise<ApiResponse<T>> {
   }
 
   const data = (res.status === 204 ? undefined : await readJson<T>(res)) as T
-  return { status: res.status, data, headers: res.headers }
+  return { status: res.status, data: validate(req, data, path), headers: res.headers }
+}
+
+function validate<T>(req: ApiRequest<T>, data: T, path: string): T {
+  if (!req.schema || data === undefined) return data
+
+  const parsed = req.schema.safeParse(data)
+  if (!parsed.success) {
+    throw new SchemaMismatchError(
+      path,
+      parsed.error.issues.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`),
+    )
+  }
+  return parsed.data
 }
 
 async function readJson<T>(res: Response): Promise<T | null> {

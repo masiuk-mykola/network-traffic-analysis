@@ -13,24 +13,37 @@ Run everything from `frontend/`.
 npm run dev                 # http://localhost:3000
 npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build
 npm run test:e2e            # Playwright, starts its own dev server
-npm run api:types           # regenerate src/lib/api/schema.d.ts from ../backend/openapi.json
+npm run api:gen             # regenerate the types and the zod schemas from ../backend/openapi.json
 ```
 
-The API must be up for anything past the skeleton:
-`cd ../backend && uv sync --no-install-project && PYTHONPATH=src .venv/bin/python -m capture_api serve`
-(plain `uv sync` fails — the packaging metadata points at a `README.md` that is not in the archive).
+The API must be up for anything past the skeleton. From the repository root:
+
+```bash
+docker compose up -d --wait simulator                              # API only, on :8700
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build   # API + this app with hot reload
+```
+
+`npm run predev` runs before `npm run dev` and regenerates the types and zod schemas from the running
+API, falling back to the document committed in `../backend`. Run it by hand with `npm run api:sync`.
 
 ## Architecture
 
 The API has CORS off and takes a bearer token, so the browser never talks to it directly.
 
-- `src/lib/api/client.ts` — raw fetch with timeouts, `ApiError`, `Retry-After` parsing. No retries,
-  no refresh.
+- `src/lib/api/client.ts` — raw fetch with timeouts, `ApiError`, `Retry-After` parsing and optional
+  response validation. No retries, no refresh.
+- `src/lib/api/generated/zod.gen.ts` — zod schemas generated from the API document. Pass one as
+  `schema` to a call and the body is validated before it reaches the UI; a mismatch raises
+  `SchemaMismatchError` and never reaches the browser. Generated, never edited by hand.
 - `src/lib/api/session-store.ts` — access and refresh tokens, keyed by an opaque session id.
   Refresh is single-flight per token family.
 - `src/lib/api/server.ts` — `callApi()`: authorized call, one refresh and one replay on a 401.
 - `src/app/api/**` — route handlers. `/api/auth/login` hands back only the profile,
-  `/api/capture/[...path]` proxies GETs. Everything token-shaped stays behind `server-only`.
+  `/api/capture/[...path]` proxies GETs and validates the ones `@api/response-schemas` knows.
+  Everything token-shaped stays behind `server-only`.
+- `src/lib/api/keys.ts` — every cache identity, in one place; nested keys share their parent's
+  prefix. `src/lib/api/fetch-json.ts` is the browser's only reader and throws `HttpError`,
+  which carries the API's stable code and any advertised wait.
 
 ## Rules the backend scores
 
@@ -51,6 +64,8 @@ read the `http-discipline` skill; the short version:
   not explain itself.
 - Prettier owns formatting: single quotes, no semicolons, width 100. Run `npm run format`.
 - Radix primitives (`@radix-ui/react-*`), not shadcn/ui. `cn()` from `@lib/utils` for classes.
+- Forms are React Hook Form + zod through `@hookform/resolvers`; the schema is the source of the
+  form's type. Responses are validated with the generated schemas, not hand-written ones.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { ApiError, rawFetch, type TokenPair } from './client'
+import { zRefreshResponse } from './generated/zod.gen'
 
 /**
  * Tokens live here, on the server; the browser only ever sees a session id.
@@ -64,6 +65,7 @@ function refreshOnce(id: string, entry: Entry): Promise<Entry> {
         method: 'POST',
         path: '/v1/auth/refresh',
         body: { refresh_token: entry.refresh },
+        schema: zRefreshResponse,
       })
       const next: Entry = {
         access: data.access_token,

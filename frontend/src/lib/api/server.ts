@@ -5,7 +5,7 @@ import { accessTokenFor, refreshAfterUnauthorized, SessionGone } from './session
 import { currentSessionId } from '@lib/session'
 
 /** Authorized server-side call: refreshes once on a 401 and replays the request exactly once. */
-export async function callApi<T>(req: Omit<ApiRequest, 'token'>): Promise<ApiResponse<T>> {
+export async function callApi<T>(req: Omit<ApiRequest<T>, 'token'>): Promise<ApiResponse<T>> {
   const sid = await currentSessionId()
   if (!sid) throw new SessionGone()
 

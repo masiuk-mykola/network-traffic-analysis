@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 
-import { ApiError, rawFetch, type TokenPair } from '@api/client'
+import { rawFetch, type TokenPair } from '@api/client'
+import { toErrorPayload } from '@api/error-response'
+import { zLoginResponse } from '@api/generated/zod.gen'
 import { putSession } from '@api/session-store'
 import { newSessionId, setSessionCookie } from '@lib/session'
 
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
       method: 'POST',
       path: '/v1/auth/login',
       body: { email, password },
+      schema: zLoginResponse,
     })
     const sid = newSessionId()
     putSession(sid, data)
@@ -25,16 +28,8 @@ export async function POST(request: Request) {
     // Only the profile goes out; the tokens stay on the server.
     return NextResponse.json({ user: data.user })
   } catch (error) {
-    if (error instanceof ApiError) {
-      const headers =
-        error.retryAfterMs === null
-          ? undefined
-          : { 'retry-after': String(Math.ceil(error.retryAfterMs / 1000)) }
-      return NextResponse.json(error.body ?? { code: error.code, detail: error.message }, {
-        status: error.status,
-        headers,
-      })
-    }
-    throw error
+    const payload = toErrorPayload(error)
+    if (!payload) throw error
+    return NextResponse.json(payload.body, { status: payload.status, headers: payload.headers })
   }
 }
