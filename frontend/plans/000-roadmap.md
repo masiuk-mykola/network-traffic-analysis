@@ -95,10 +95,10 @@ The main screen. A search is a server-side job: create it, follow it, read it pa
 
 ## Phase 5: The investigation and the write-up
 
-| #   | Commit                           | What                                                                                                                                                                        |
-| --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 5.1 | `docs: report the compromise`    | Find the compromised machine **through the interface**, not by reading backend code: where it starts, a link into our own UI, how it was found and what was ruled out.      |
-| 5.2 | `docs: write the project README` | How to run it (npm, the API, Docker), what is done and what is not and why, the architecture in a paragraph, the testing approach, and an honest note on where AI was used. |
+| #   | Commit                           | What                                                                                                                                                                                                                                                                                                                             |
+| --- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.1 | ✅ done                          | `ws-hb-009.quillmere.example` (10.20.40.18) at harbor-branch, starting 2025-10-25 03:11:38 UTC with the first lookup of `telemetry.static-assets-cdn.test`. Written up in the README with two session links and a re-runnable query, the scanner and the NXDOMAIN bursts ruled out, and the estimate's any-join defect recorded. |
+| 5.2 | `docs: write the project README` | How to run it (npm, the API, Docker), what is done and what is not and why, the architecture in a paragraph, the testing approach, and an honest note on where AI was used.                                                                                                                                                      |
 
 ---
 
