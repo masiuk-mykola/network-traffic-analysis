@@ -69,6 +69,9 @@ read the `http-discipline` skill; the short version:
   a 401 redirects — an unreachable API reaches the error boundary instead.
 - A session that dies mid-use is handled once, centrally: every browser read reports through
   `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
+- The search query lives in the address bar: `@lib/search/query-params` parses it defensively (a
+  shared link can name points this account cannot read) and the form mirrors changes back with
+  `router.replace`.
 - Forms are React Hook Form + zod through `@hookform/resolvers`; the schema is the source of the
   form's type. Responses are validated with the generated schemas, not hand-written ones.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
