@@ -43,10 +43,50 @@ CORS is off on purpose. The browser cannot call this API: your own server has to
 
 Accounts:
 
-| email | password | role |
-|---|---|---|
-| `ana@quillmere.example` | `demo-analyst` | analyst, sees everything |
+| email                   | password        | role                        |
+| ----------------------- | --------------- | --------------------------- |
+| `ana@quillmere.example` | `demo-analyst`  | analyst, sees everything    |
 | `oli@quillmere.example` | `demo-observer` | read-only, some data hidden |
+
+## Running the frontend
+
+The interface lives in `frontend/` (Next.js, App Router). Everything below is run from the
+repository root unless it says otherwise.
+
+Whole stack in Docker — the API and a production build of the app:
+
+```bash
+docker compose up -d --build     # API on :8700, UI on http://localhost:3000
+```
+
+Same, but with the app running from the source tree and reloading on save:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Without Docker (Node 24, see `.nvmrc`), with the API already running on :8700:
+
+```bash
+cd frontend
+cp .env.example .env.local       # CAPTURE_API_URL, read on the server only
+npm install
+npm run dev                      # refreshes the API types first, then starts on :3000
+```
+
+The checks CI runs, from `frontend/`:
+
+```bash
+npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build
+npm run test:e2e                 # Playwright
+```
+
+Two problems in the delivered backend had to be worked around to run it at all. `pyproject.toml`
+and `backend/Dockerfile` expect a `backend/README.md` that was missing from the archive, so both
+`uv sync` and the image build failed — the file was added back. And the image's `CMD` names
+`capture_api` while the console script installed by `pyproject.toml` is `capture-api`, so the
+container exec-failed on boot — `docker-compose.yml` overrides the command rather than editing the
+backend.
 
 ## What to build
 
