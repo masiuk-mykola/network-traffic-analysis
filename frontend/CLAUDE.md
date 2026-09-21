@@ -72,6 +72,8 @@ read the `http-discipline` skill; the short version:
 - Loading, empty and error states come from `@/components/states`, and transient failures from
   `useToast` — screens never hand-roll their own. What a failure says and whether it offers a
   retry is decided once, in `@api/failure`.
+- Forms are React Hook Form + zod through `@hookform/resolvers`, with the shared `Field` doing the
+  labelling; the schema mirrors the API's own limits so a doomed attempt never leaves the browser.
 - Values are formatted in `@lib/format` and nowhere else: timestamps are shown in UTC with the
   zone spelled out, absent values get the shared marker, and identifiers are passed through as
   strings — they are wider than a JavaScript number, so nothing may parse them.
