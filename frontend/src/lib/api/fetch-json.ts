@@ -1,3 +1,5 @@
+import { reportFailure } from '@lib/auth/session-expiry'
+
 import { HttpError } from './http-error'
 
 /**
@@ -16,7 +18,13 @@ export async function fetchJson<T>(
     signal,
   })
 
-  if (!res.ok) throw await HttpError.fromResponse(res)
+  if (!res.ok) {
+    const failure = await HttpError.fromResponse(res)
+    // Every browser read passes through here, so this is where a dead session is noticed —
+    // whether or not the caller happens to be a React Query hook.
+    reportFailure(failure)
+    throw failure
+  }
 
   return (await res.json()) as T
 }

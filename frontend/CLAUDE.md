@@ -67,6 +67,8 @@ read the `http-discipline` skill; the short version:
 - Protected screens live under `src/app/(app)/`; the guard is that group's layout, which resolves
   the profile once per navigation. Pages below it never check again, and only a missing session or
   a 401 redirects — an unreachable API reaches the error boundary instead.
+- A session that dies mid-use is handled once, centrally: every browser read reports through
+  `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
 - Forms are React Hook Form + zod through `@hookform/resolvers`; the schema is the source of the
   form's type. Responses are validated with the generated schemas, not hand-written ones.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
