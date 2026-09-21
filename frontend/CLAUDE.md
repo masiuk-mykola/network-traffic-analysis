@@ -69,6 +69,9 @@ read the `http-discipline` skill; the short version:
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.
+- Loading, empty and error states come from `@/components/states`, and transient failures from
+  `useToast` — screens never hand-roll their own. What a failure says and whether it offers a
+  retry is decided once, in `@api/failure`.
 - Unit tests live next to the code as `*.test.ts(x)`; Playwright specs live in `e2e/`.
 - Conventional commits (commitlint + husky run from the repo root).
 

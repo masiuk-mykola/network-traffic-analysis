@@ -76,3 +76,12 @@ describe('isHttpError', () => {
     expect(isHttpError({ status: 500 })).toBe(false)
   })
 })
+
+describe('failure identity', () => {
+  it('gives every failure its own id, so a later one is told apart from the one before', async () => {
+    const first = await HttpError.fromResponse(proxyResponse({ code: 'x', detail: 'y' }))
+    const second = await HttpError.fromResponse(proxyResponse({ code: 'x', detail: 'y' }))
+
+    expect(second.id).not.toBe(first.id)
+  })
+})

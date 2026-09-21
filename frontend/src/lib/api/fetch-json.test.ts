@@ -4,7 +4,9 @@ import { fetchJson } from './fetch-json'
 import { HttpError } from './http-error'
 
 function stubFetch(response: Response) {
-  const spy = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => response)
+  const spy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+    async () => response,
+  )
   vi.stubGlobal('fetch', spy)
   return spy
 }

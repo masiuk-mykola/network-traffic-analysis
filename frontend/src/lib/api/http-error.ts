@@ -1,7 +1,11 @@
 import { parseRetryAfter } from './retry-after'
 
+let nextId = 0
+
 /** What a failed call looks like to the browser. Built from our own proxy's response. */
 export class HttpError extends Error {
+  /** Distinguishes one failure from the next, even when they say the same thing. */
+  readonly id: number
   readonly status: number
   readonly code: string
   /** The whole error envelope, including any machine-readable extras. Null when it was not JSON. */
@@ -17,6 +21,8 @@ export class HttpError extends Error {
   ) {
     super(detail)
     this.name = 'HttpError'
+    nextId += 1
+    this.id = nextId
     this.status = status
     this.code = code
     this.body = body
