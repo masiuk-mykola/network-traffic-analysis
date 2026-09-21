@@ -6,3 +6,4 @@ package-lock.json
 src/lib/api/schema.d.ts
 .claude
 .agents
+src/lib/api/generated

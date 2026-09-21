@@ -13,6 +13,7 @@ export default defineConfig([
     'build/**',
     'next-env.d.ts',
     'src/lib/api/schema.d.ts',
+    'src/lib/api/generated/**',
     '.claude/**',
     '.agents/**',
   ]),
