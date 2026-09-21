@@ -3,22 +3,27 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { formatTimestamp } from '@lib/format'
+import { type ConditionRow, type FieldCatalogue, type Join } from '@lib/search/condition'
 import {
-  describeCondition,
-  type ConditionRow,
-  type FieldCatalogue,
-  type Join,
-} from '@lib/search/condition'
-import { MAX_SENSORS, toQueryString, type QueryState } from '@lib/search/query-params'
+  describeQuery,
+  MAX_SENSORS,
+  toQueryString,
+  type QueryState,
+} from '@lib/search/query-params'
+import { toEstimateParams } from '@lib/search/estimate-params'
 import { useFields } from '@lib/search/use-fields'
 import { useSensors } from '@lib/search/use-sensors'
+import { useDebounced } from '@lib/use-debounced'
 import { defaultWindow } from '@lib/search/window'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Field } from '@/components/form/field'
 import { Button, Input } from '@/components/ui'
 
 import { ConditionBuilder } from './condition-builder'
+import { EstimateLine } from './estimate-line'
 import { SensorOption } from './sensor-option'
+
+const ESTIMATE_DELAY_MS = 400
 
 /** The form keeps the choices locally and mirrors them into the address bar as they change. */
 export function QueryForm({
@@ -42,6 +47,11 @@ export function QueryForm({
     const suggested = defaultWindow(chosen.length > 0 ? chosen : items)
     return suggested ? { ...state, ...suggested } : state
   }, [state, items])
+
+  // The endpoint allows only a few requests per second, so it is asked about a settled query.
+  // Both hooks run before any early return, or their order would change between renders.
+  const settled = useDebounced(query, ESTIMATE_DELAY_MS)
+  const estimateParams = toEstimateParams(settled, fields.data ?? {})
 
   useEffect(() => {
     // The query is client state; the address bar only has to reflect it for a reload or a shared
@@ -68,7 +78,7 @@ export function QueryForm({
   }
 
   const atLimit = query.sensorIds.length >= MAX_SENSORS
-  const problem = describeProblem(query, fields.data ?? {})
+  const problem = describeQuery(query, fields.data ?? {})
 
   return (
     <form
@@ -156,25 +166,14 @@ export function QueryForm({
         </p>
       ) : null}
 
-      <Button type="submit" disabled={problem !== null}>
-        Run search
-      </Button>
+      <div className="space-y-3">
+        <EstimateLine params={estimateParams} />
+        <Button type="submit" disabled={problem !== null}>
+          Run search
+        </Button>
+      </div>
     </form>
   )
-}
-
-function describeProblem(state: QueryState, fields: FieldCatalogue): string | null {
-  if (state.sensorIds.length === 0) return 'Choose at least one capture point.'
-  if (state.sensorIds.length > MAX_SENSORS) return `Choose no more than ${MAX_SENSORS}.`
-  if (!state.from || !state.to) return 'Choose a time window.'
-  if (Date.parse(state.from) >= Date.parse(state.to)) return 'The window ends before it starts.'
-
-  for (const row of state.conditions) {
-    const unfinished = describeCondition(row, fields[row.field])
-    if (unfinished) return `A condition is unfinished: ${unfinished.toLowerCase()}`
-  }
-
-  return null
 }
 
 /** `datetime-local` speaks the browser's zone; everything here is UTC, so convert explicitly. */

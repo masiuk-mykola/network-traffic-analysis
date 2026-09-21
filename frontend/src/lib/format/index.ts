@@ -1,3 +1,4 @@
+export { formatApproximate, formatCount } from './count'
 export { formatByteCount, formatBytes, type ByteCount, type FormattedByteCount } from './bytes'
 export { formatDuration } from './duration'
 export { EMPTY } from './empty'

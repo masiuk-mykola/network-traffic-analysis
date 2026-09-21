@@ -69,6 +69,9 @@ read the `http-discipline` skill; the short version:
   a 401 redirects — an unreachable API reaches the error boundary instead.
 - A session that dies mid-use is handled once, centrally: every browser read reports through
   `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
+- The estimate is asked for a settled query only, never on a keystroke and never on a timer: the
+  endpoint allows a few requests per second and the backend scores the refusals. While it loads,
+  the previous number is removed rather than dimmed.
 - Conditions are a flat list joined by all-or-any, each one negatable, built only from the fields
   the server publishes and the comparisons each field declares. They travel in the API's own
   `f=field:op:v1,v2` form, which `/v1/estimate` also accepts.

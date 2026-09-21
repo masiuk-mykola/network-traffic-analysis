@@ -19,6 +19,10 @@ describe('key factory', () => {
     expect(sensorsKey()).toEqual(sensorsKey())
   })
 
+  it('separates two different estimate queries', () => {
+    expect(estimateKey('from=a&to=b')).not.toEqual(estimateKey('from=a&to=c'))
+  })
+
   it('separates different inputs', () => {
     expect(sessionKey('72075232438042624')).not.toEqual(sessionKey('72075232438042625'))
     expect(searchResultsKey('7', 'page-1')).not.toEqual(searchResultsKey('7', 'page-2'))
@@ -43,7 +47,7 @@ describe('key factory', () => {
       fieldsKey()[0],
       columnsKey()[0],
       enumKey('protocol')[0],
-      estimateKey({ from: 'a', to: 'b' })[0],
+      estimateKey('from=a&to=b')[0],
       searchKey('7')[0],
       sessionKey('7')[0],
       protocolSchemaKey('dns')[0],

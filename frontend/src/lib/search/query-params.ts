@@ -1,5 +1,5 @@
 import { conditionsToParams, parseConditions } from './condition-params'
-import type { ConditionRow, FieldCatalogue, Join } from './condition'
+import { describeCondition, type ConditionRow, type FieldCatalogue, type Join } from './condition'
 
 /** The API refuses a search that names more capture points than this. */
 export const MAX_SENSORS = 5
@@ -65,4 +65,23 @@ function parseWindow(from: string | null, to: string | null): Pick<QueryState, '
   if (Number.isNaN(start) || Number.isNaN(end) || start >= end) return { from: null, to: null }
 
   return { from, to }
+}
+
+/**
+ * What still stops this query from being run, in the words the person needs. Null when it is ready.
+ * The form blocks its control on this and the estimate refuses to ask for anything else, so the two
+ * can never disagree about whether a query is complete.
+ */
+export function describeQuery(state: QueryState, fields: FieldCatalogue): string | null {
+  if (state.sensorIds.length === 0) return 'Choose at least one capture point.'
+  if (state.sensorIds.length > MAX_SENSORS) return `Choose no more than ${MAX_SENSORS}.`
+  if (!state.from || !state.to) return 'Choose a time window.'
+  if (Date.parse(state.from) >= Date.parse(state.to)) return 'The window ends before it starts.'
+
+  for (const row of state.conditions) {
+    const unfinished = describeCondition(row, fields[row.field])
+    if (unfinished) return `A condition is unfinished: ${unfinished.toLowerCase()}`
+  }
+
+  return null
 }

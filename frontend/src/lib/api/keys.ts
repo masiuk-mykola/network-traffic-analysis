@@ -13,13 +13,6 @@
 
 export type QueryKey = readonly unknown[]
 
-export type EstimateParams = {
-  from: string
-  to: string
-  sensors?: readonly string[]
-  filter?: unknown
-}
-
 export const sensorsKey = () => ['sensors'] as const
 
 export const fieldsKey = () => ['fields'] as const
@@ -28,8 +21,8 @@ export const columnsKey = () => ['columns'] as const
 
 export const enumKey = (name: string) => ['enum', name] as const
 
-export const estimateKey = (params: EstimateParams) =>
-  ['estimate', params.from, params.to, params.sensors ?? null, params.filter ?? null] as const
+/** Keyed by the exact query string the endpoint is asked with, so two different queries never share. */
+export const estimateKey = (search: string) => ['estimate', search] as const
 
 export const searchKey = (searchId: string) => ['search', searchId] as const
 
