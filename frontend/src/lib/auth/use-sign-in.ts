@@ -5,15 +5,14 @@ import { useRouter } from 'next/navigation'
 
 import { HttpError } from '@api/http-error'
 
+import { DEFAULT_TARGET } from './redirect-target'
 import type { Credentials } from './credentials'
-
-const SEARCH_PATH = '/search'
 
 /**
  * Posts the credentials to our own route handler — the API token is exchanged and kept server-side,
  * and the browser only receives the profile. Never retried: a refused password must not be sent twice.
  */
-export function useSignIn() {
+export function useSignIn(destination: string = DEFAULT_TARGET) {
   const router = useRouter()
 
   return useMutation({
@@ -30,7 +29,7 @@ export function useSignIn() {
     retry: false,
     onSuccess: () => {
       // replace, so the back button does not return to a form that is no longer needed.
-      router.replace(SEARCH_PATH)
+      router.replace(destination)
       router.refresh()
     },
   })

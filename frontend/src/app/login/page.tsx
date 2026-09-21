@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { callApi } from '@api/server'
+import { safeRedirectTarget } from '@lib/auth/redirect-target'
 import { currentSessionId } from '@lib/session'
 
 import { LoginForm } from './login-form'
@@ -10,8 +11,11 @@ const DEMO_ACCOUNTS = [
   { email: 'oli@quillmere.example', password: 'demo-observer', role: 'read-only' },
 ]
 
-export default async function LoginPage() {
-  if (await hasLiveSession()) redirect('/search')
+export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
+  const { next } = await searchParams
+  const destination = safeRedirectTarget(typeof next === 'string' ? next : null)
+
+  if (await hasLiveSession()) redirect(destination)
 
   return (
     <main className="relative flex flex-1 items-center justify-center px-6 py-16">
@@ -29,7 +33,7 @@ export default async function LoginPage() {
         </header>
 
         <div className="border-border bg-surface/60 rounded-xl border p-6 shadow-[0_1px_0_0_var(--color-border)] backdrop-blur-sm">
-          <LoginForm />
+          <LoginForm destination={destination} />
         </div>
 
         <section aria-label="Demo accounts" className="mt-6">

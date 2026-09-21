@@ -12,8 +12,8 @@ import { ErrorState } from '@/components/states'
 import { Field } from '@/components/form/field'
 import { Button, Input } from '@/components/ui'
 
-export function LoginForm() {
-  const signIn = useSignIn()
+export function LoginForm({ destination }: { destination?: string }) {
+  const signIn = useSignIn(destination)
   const failure = signIn.error ? describeFailure(signIn.error) : null
   const {
     register,
