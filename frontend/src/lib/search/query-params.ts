@@ -10,6 +10,8 @@ export type QueryState = {
   to: string | null
   conditions: ConditionRow[]
   join: Join
+  /** The job this screen started, so a reload returns to it rather than to an empty form. */
+  searchId: string | null
 }
 
 export const EMPTY_QUERY: QueryState = {
@@ -18,6 +20,7 @@ export const EMPTY_QUERY: QueryState = {
   to: null,
   conditions: [],
   join: 'all',
+  searchId: null,
 }
 
 /**
@@ -42,6 +45,7 @@ export function parseQuery(
     ...parseWindow(params.get('from'), params.get('to')),
     conditions: parseConditions(params, fields),
     join: params.get('join') === 'any' ? 'any' : 'all',
+    searchId: parseSearchId(params.get('search')),
   }
 }
 
@@ -54,7 +58,13 @@ export function toQueryString(state: QueryState): string {
   }
   for (const condition of conditionsToParams(state.conditions)) params.append('f', condition)
   if (state.join === 'any' && state.conditions.length > 1) params.set('join', 'any')
+  if (state.searchId) params.set('search', state.searchId)
   return params.toString()
+}
+
+/** Ids are opaque to us; anything that is not a plausible one is simply not a search. */
+function parseSearchId(value: string | null): string | null {
+  return value && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : null
 }
 
 function parseWindow(from: string | null, to: string | null): Pick<QueryState, 'from' | 'to'> {

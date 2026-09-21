@@ -12,15 +12,17 @@ import {
 } from '@lib/search/query-params'
 import { toEstimateParams } from '@lib/search/estimate-params'
 import { useFields } from '@lib/search/use-fields'
+import { useSearch } from '@lib/search/use-search'
 import { useSensors } from '@lib/search/use-sensors'
 import { useDebounced } from '@lib/use-debounced'
 import { defaultWindow } from '@lib/search/window'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Field } from '@/components/form/field'
-import { Button, Input } from '@/components/ui'
+import { Input } from '@/components/ui'
 
 import { ConditionBuilder } from './condition-builder'
 import { EstimateLine } from './estimate-line'
+import { RunControl } from './run-control'
 import { SensorOption } from './sensor-option'
 
 const ESTIMATE_DELAY_MS = 400
@@ -52,6 +54,7 @@ export function QueryForm({
   // Both hooks run before any early return, or their order would change between renders.
   const settled = useDebounced(query, ESTIMATE_DELAY_MS)
   const estimateParams = toEstimateParams(settled, fields.data ?? {})
+  const running = useSearch(query.searchId)
 
   useEffect(() => {
     // The query is client state; the address bar only has to reflect it for a reload or a shared
@@ -168,9 +171,13 @@ export function QueryForm({
 
       <div className="space-y-3">
         <EstimateLine params={estimateParams} />
-        <Button type="submit" disabled={problem !== null}>
-          Run search
-        </Button>
+        <RunControl
+          query={query}
+          fields={fields.data ?? {}}
+          problem={problem}
+          running={running.data}
+          onStarted={(search) => setState({ ...query, searchId: search.id })}
+        />
       </div>
     </form>
   )

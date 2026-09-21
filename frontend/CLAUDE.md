@@ -69,6 +69,10 @@ read the `http-discipline` skill; the short version:
   a 401 redirects — an unreachable API reaches the error boundary instead.
 - A session that dies mid-use is handled once, centrally: every browser read reports through
   `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
+- Starting a search is a write, so it has its own handlers under `src/app/api/searches`; reads
+  still go through the proxy. The idempotency label is derived from the query, so a retry replays
+  the job already started, an unchanged query does not start a second one, and a changed query
+  frees the old slot before taking a new one.
 - The estimate is asked for a settled query only, never on a keystroke and never on a timer: the
   endpoint allows a few requests per second and the backend scores the refusals. While it loads,
   the previous number is removed rather than dimmed.
