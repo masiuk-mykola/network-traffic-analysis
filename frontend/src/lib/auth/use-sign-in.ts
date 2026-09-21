@@ -29,8 +29,9 @@ export function useSignIn(destination: string = DEFAULT_TARGET) {
     retry: false,
     onSuccess: () => {
       // replace, so the back button does not return to a form that is no longer needed.
+      // No refresh after it: the guarded layout is dynamic, so the navigation already renders it
+      // fresh, and refreshing asked the API who we are a second time within the same moment.
       router.replace(destination)
-      router.refresh()
     },
   })
 }

@@ -13,6 +13,8 @@ type Entry = {
   refresh: string
   inflight: Promise<Entry> | null
   revoked: boolean
+  /** The profile read that is currently in flight, shared by everyone who asks meanwhile. */
+  profileInflight: Promise<unknown> | null
 }
 
 const REFRESH_SKEW_MS = 5_000
@@ -35,7 +37,26 @@ export function putSession(id: string, pair: TokenPair): void {
     refresh: pair.refresh_token,
     inflight: null,
     revoked: false,
+    profileInflight: null,
   })
+}
+
+/**
+ * One profile read per session at a time. A single navigation can ask more than once — the guard
+ * renders, a page checks, a redirect re-renders — and the API counts identical GETs in the same
+ * moment against us. Nothing is cached after it settles, so a revoked session is still noticed at
+ * the next attempt.
+ */
+export function shareProfileRead<T>(id: string, read: () => Promise<T>): Promise<T> {
+  const entry = sessions.get(id)
+  if (!entry) return read()
+  if (entry.profileInflight) return entry.profileInflight as Promise<T>
+
+  const inflight = read().finally(() => {
+    entry.profileInflight = null
+  })
+  entry.profileInflight = inflight
+  return inflight
 }
 
 export function dropSession(id: string): void {
@@ -82,6 +103,7 @@ function refreshOnce(id: string, entry: Entry): Promise<Entry> {
         refresh: data.refresh_token,
         inflight: null,
         revoked: false,
+        profileInflight: null,
       }
       sessions.set(id, next)
       return next

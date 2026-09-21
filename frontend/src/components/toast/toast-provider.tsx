@@ -2,7 +2,7 @@
 
 import * as Toast from '@radix-ui/react-toast'
 import { X } from 'lucide-react'
-import { createContext, useCallback, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { describeFailure } from '@api/failure'
 import { cn } from '@lib/utils'
@@ -30,11 +30,13 @@ const DURATION_MS = 6_000
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<Entry[]>([])
+  // A counter, not a timestamp: two toasts in the same millisecond must not share a key.
+  const nextId = useRef(0)
 
   const notify = useCallback((input: ToastInput) => {
     setEntries((current) => [
       ...current,
-      { ...input, kind: input.kind ?? 'info', id: Date.now() + current.length },
+      { ...input, kind: input.kind ?? 'info', id: (nextId.current += 1) },
     ])
   }, [])
 

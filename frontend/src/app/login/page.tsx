@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { callApi } from '@api/server'
+import { shareProfileRead } from '@api/session-store'
 import { safeRedirectTarget } from '@lib/auth/redirect-target'
 import { currentSessionId } from '@lib/session'
 
@@ -66,7 +67,7 @@ async function hasLiveSession(): Promise<boolean> {
   if (!sessionId) return false
 
   try {
-    await callApi({ path: '/v1/me' })
+    await shareProfileRead(sessionId, () => callApi({ path: '/v1/me' }))
     return true
   } catch {
     return false

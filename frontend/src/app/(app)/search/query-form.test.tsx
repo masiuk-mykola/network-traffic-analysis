@@ -1,0 +1,127 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { EMPTY_QUERY } from '@lib/search/query-params'
+
+import { QueryForm } from './query-form'
+
+const replace = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace, refresh: vi.fn() }),
+}))
+
+const SENSORS = {
+  items: [
+    {
+      id: 'hq-core',
+      name: 'HQ Core',
+      site: 'Lisbon HQ',
+      kind: 'tap',
+      status: 'online',
+      decoder_version: 'v2',
+      tz: 'Europe/Lisbon',
+      retention: { metadata_days: 30, pcap_hours: 48, files_days: 7 },
+      last_packet_at: '2025-10-27T12:00:00.000Z',
+      lag_seconds: 2,
+    },
+    {
+      id: 'harbor-branch',
+      name: 'Harbor Branch',
+      site: 'Porto',
+      kind: 'span',
+      status: 'lagging',
+      decoder_version: 'v1',
+      tz: 'Europe/Berlin',
+      retention: { metadata_days: 30, pcap_hours: 48, files_days: 7 },
+      last_packet_at: '2025-10-27T11:55:00.000Z',
+      lag_seconds: 300,
+    },
+  ],
+}
+
+function renderForm(response: () => Promise<Response>) {
+  vi.stubGlobal('fetch', vi.fn(response))
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <QueryForm initial={EMPTY_QUERY} />
+    </QueryClientProvider>,
+  )
+}
+
+beforeEach(() => {
+  replace.mockClear()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('QueryForm', () => {
+  it('cannot be submitted while the points are loading', async () => {
+    renderForm(() => new Promise<Response>(() => {}))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading capture points')
+    expect(screen.queryByRole('button', { name: 'Run search' })).not.toBeInTheDocument()
+  })
+
+  it('offers a retry when the points cannot be fetched', async () => {
+    renderForm(async () => Response.json({ code: 'unavailable', detail: 'busy' }, { status: 503 }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('says so when the account may read none', async () => {
+    renderForm(async () => Response.json({ items: [] }, { status: 200 }))
+
+    expect(await screen.findByText('No capture points to search')).toBeInTheDocument()
+  })
+
+  it('refuses to search nowhere', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Choose at least one capture point.')
+    expect(screen.getByRole('button', { name: 'Run search' })).toBeDisabled()
+  })
+
+  it('marks the point that is behind', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+
+    const row = (await screen.findByText('Harbor Branch')).closest('li')
+    expect(row).toHaveTextContent('behind 5 m 00 s')
+  })
+
+  it('suggests a window that ends at the last traffic, not today', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+
+    const to = await screen.findByLabelText('To (UTC)')
+    expect(to).toHaveValue('2025-10-27T12:00')
+  })
+
+  it('mirrors the choices into the address bar', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+    await screen.findByText('HQ Core')
+
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(expect.stringContaining('sensor=hq-core'), {
+        scroll: false,
+      }),
+    )
+  })
+
+  it('refuses a window that ends before it starts', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+    await screen.findByText('HQ Core')
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+
+    const from = screen.getByLabelText('From (UTC)')
+    fireEvent.change(from, { target: { value: '2025-10-27T23:00' } })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The window ends before it starts.')
+  })
+})

@@ -17,7 +17,7 @@ export function describeFailure(error: unknown): Failure {
   if (!isHttpError(error)) {
     return {
       title: 'Could not load this',
-      detail: 'The request did not reach the server. Check your connection and try again.',
+      detail: 'The request did not complete. Trying again may help.',
       code: null,
       retryable: true,
       retryAfterMs: null,

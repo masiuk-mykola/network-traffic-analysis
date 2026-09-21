@@ -6,7 +6,7 @@ import { ApiError } from '@api/client'
 import type { components } from '@api/schema'
 import { zGetMeResponse } from '@api/generated/zod.gen'
 import { callApi } from '@api/server'
-import { SessionGone } from '@api/session-store'
+import { SessionGone, shareProfileRead } from '@api/session-store'
 import { currentSessionId } from '@lib/session'
 
 export type Profile = components['schemas']['Profile']
@@ -24,8 +24,10 @@ export async function requireProfile(destination: string): Promise<Profile> {
   if (!sessionId) redirect(signInUrl(destination))
 
   try {
-    const { data } = await callApi<Profile>({ path: '/v1/me', schema: zGetMeResponse })
-    return data
+    return await shareProfileRead(sessionId, async () => {
+      const { data } = await callApi<Profile>({ path: '/v1/me', schema: zGetMeResponse })
+      return data
+    })
   } catch (error) {
     if (error instanceof SessionGone) redirect(signInUrl(destination))
     if (error instanceof ApiError && error.status === 401) redirect(signInUrl(destination))
