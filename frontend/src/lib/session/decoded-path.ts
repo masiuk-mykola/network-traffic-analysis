@@ -1,3 +1,5 @@
+import { isRedacted } from '@lib/format'
+
 /** A published path is dotted, and `[]` means "each element of this list". */
 const LIST = '[]'
 
@@ -32,6 +34,10 @@ export function valuesAt(decoded: unknown, path: string): unknown[] {
 
 /** Every value in the payload, named by its path. An empty list or object holds nothing to show. */
 export function leaves(decoded: unknown, prefix = ''): DecodedEntry[] {
+  // A withheld value is a value, not a structure: walking into it would print the marker's own
+  // field instead of saying the value is withheld.
+  if (isRedacted(decoded)) return [{ path: prefix, value: decoded }]
+
   if (Array.isArray(decoded)) {
     return decoded.flatMap((item, index) => leaves(item, `${prefix}[${index}]`))
   }

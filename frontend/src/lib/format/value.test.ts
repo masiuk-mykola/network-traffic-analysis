@@ -63,3 +63,11 @@ describe('the kinds a decoded transaction carries', () => {
     expect(formatByColumnType('string', 'SSH-2.0-OpenSSH_8.9p1')).toBe('SSH-2.0-OpenSSH_8.9p1')
   })
 })
+
+describe('a value the server withheld', () => {
+  it('never reaches the screen, whatever kind of column it sits in', () => {
+    for (const type of ['text', 'ip_port', 'bytes', 'ts', 'geo_hint']) {
+      expect(formatByColumnType(type, { redacted: true })).toBe('Withheld for your role')
+    }
+  })
+})

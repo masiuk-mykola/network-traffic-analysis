@@ -1,4 +1,4 @@
-import { EMPTY, formatByColumnType } from '@lib/format'
+import { EMPTY, formatByColumnType, isRedacted } from '@lib/format'
 import { splitDecoded } from '@lib/session/described'
 import type { components } from '@api/schema'
 import { EmptyState } from '@/components/states'
@@ -39,7 +39,7 @@ export function Transaction({
               <Row
                 key={field.path}
                 label={field.title}
-                note={field.sensitive ? 'sensitive' : field.unit}
+                note={noteFor(field.sensitive, field.unit, field.values)}
                 values={field.values.map((value) => formatByColumnType(field.type, value))}
               />
             ))}
@@ -70,6 +70,17 @@ export function Transaction({
       ) : null}
     </div>
   )
+}
+
+/** What the label carries beside itself: why a value is missing, or what unit it is in. */
+function noteFor(
+  sensitive: boolean,
+  unit: string | undefined,
+  values: unknown[],
+): string | undefined {
+  if (values.some(isRedacted)) return 'withheld'
+  if (sensitive) return 'sensitive'
+  return unit
 }
 
 function Row({

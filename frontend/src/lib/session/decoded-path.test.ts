@@ -85,6 +85,12 @@ describe('leaves', () => {
     ])
   })
 
+  it('treats a withheld value as one value, not as a structure to walk into', () => {
+    expect(leaves({ http: { headers: { cookie: { redacted: true } } } })).toEqual([
+      { path: 'http.headers.cookie', value: { redacted: true } },
+    ])
+  })
+
   it('treats an empty list or object as nothing to show', () => {
     expect(leaves({ dns: { answers: [], flags: {} } })).toEqual([])
   })

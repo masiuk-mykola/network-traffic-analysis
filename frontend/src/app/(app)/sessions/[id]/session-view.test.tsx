@@ -160,6 +160,33 @@ describe('SessionView, for a DNS session', () => {
   })
 })
 
+describe('SessionView, read by an observer', () => {
+  it('says a withheld value is withheld, and shows nothing of it', async () => {
+    renderView(
+      session({
+        protocol: 'http',
+        decoder: 'http/2',
+        // What the server actually sends an observer in place of a sensitive header.
+        decoded: {
+          http: {
+            method: 'GET',
+            request_headers: [
+              { name: 'Host', value: 'prn-03' },
+              { name: 'Cookie', value: { redacted: true } },
+            ],
+          },
+        },
+      }),
+    )
+
+    const extra = await screen.findByRole('region', { name: 'Not described by the schema' })
+    expect(extra).toHaveTextContent('Withheld for your role')
+    expect(extra).not.toHaveTextContent('redacted')
+    // The reader still learns which field it was.
+    expect(extra).toHaveTextContent('http.request_headers[1].value')
+  })
+})
+
 describe('SessionView, for any other protocol', () => {
   it('has no exchange, and the generic view as before', async () => {
     renderView(

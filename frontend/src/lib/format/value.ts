@@ -2,6 +2,7 @@ import { formatByteCount, formatBytes, type ByteCount } from './bytes'
 import { formatDuration } from './duration'
 import { EMPTY } from './empty'
 import { formatEndpoint, type Endpoint } from './endpoint'
+import { isRedacted, WITHHELD } from './redacted'
 import { formatTimestamp } from './time'
 
 /**
@@ -10,6 +11,8 @@ import { formatTimestamp } from './time'
  */
 export function formatByColumnType(type: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return EMPTY
+  // The server withholds sensitive values from an observer; none of them is ever printed raw.
+  if (isRedacted(value)) return WITHHELD
 
   const asCount = asNumber(value)
 
