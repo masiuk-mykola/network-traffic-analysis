@@ -107,7 +107,7 @@ describe('RunControl', () => {
   })
 
   it('labels a retry the same way, so the server replays instead of duplicating', async () => {
-    const { calls } = renderControl(async (call) =>
+    const { calls } = renderControl(async () =>
       calls.filter((c) => c.method === 'POST').length === 1
         ? Response.json({ code: 'unavailable', detail: 'busy' }, { status: 503 })
         : started(),

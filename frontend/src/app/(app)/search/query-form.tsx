@@ -22,6 +22,7 @@ import { Input } from '@/components/ui'
 
 import { ConditionBuilder } from './condition-builder'
 import { EstimateLine } from './estimate-line'
+import { ResultsTable } from './results-table'
 import { RunControl } from './run-control'
 import { SensorOption } from './sensor-option'
 
@@ -184,6 +185,8 @@ export function QueryForm({
           onStarted={(search) => setState({ ...query, searchId: search.id })}
         />
       </div>
+
+      <ResultsTable searchId={query.searchId} status={running.data} />
     </form>
   )
 }

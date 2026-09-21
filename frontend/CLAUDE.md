@@ -87,6 +87,12 @@ read the `http-discipline` skill; the short version:
   `router.replace`.
 - Forms are React Hook Form + zod through `@hookform/resolvers`; the schema is the source of the
   form's type. Responses are validated with the generated schemas, not hand-written ones.
+- Results are a virtualized window over pages of 500: the table is built from the columns the server
+  publishes (order, default visibility, widths, what may be sorted), never from a hard-coded set, and
+  a column type or key it has never seen renders as text rather than breaking. While the job runs the
+  order is fixed, and a page with no cursor means caught up, not finished.
+- A generated schema that is stricter than the live server is relaxed in `@api/response-schemas` with
+  the reason next to it — `/v1/meta/columns` publishes a column type the API document omits.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.
