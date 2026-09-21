@@ -1,4 +1,4 @@
-import { formatByteCount, type ByteCount } from './bytes'
+import { formatByteCount, formatBytes, type ByteCount } from './bytes'
 import { formatDuration } from './duration'
 import { EMPTY } from './empty'
 import { formatEndpoint, type Endpoint } from './endpoint'
@@ -11,13 +11,19 @@ import { formatTimestamp } from './time'
 export function formatByColumnType(type: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return EMPTY
 
+  const asCount = asNumber(value)
+
   switch (type) {
     case 'ts':
       return typeof value === 'string' ? formatTimestamp(value) : asText(value)
-    case 'duration':
-      return typeof value === 'number' ? formatDuration(value) : asText(value)
+    // A table column carries both directions; a decoded field carries a single size, and an older
+    // decoder quotes it as a string.
     case 'bytes':
-      return isByteCount(value) ? formatByteCount(value).total : asText(value)
+      if (isByteCount(value)) return formatByteCount(value).total
+      return asCount === null ? asText(value) : formatBytes(asCount)
+    case 'duration':
+    case 'duration_ms':
+      return asCount === null ? asText(value) : formatDuration(asCount)
     case 'ip_port':
       return isEndpoint(value) ? formatEndpoint(value).address : asText(value)
     case 'risk':
@@ -28,6 +34,14 @@ export function formatByColumnType(type: string, value: unknown): string {
     default:
       return asText(value)
   }
+}
+
+/** The older decoder quotes numbers as strings; a value that is not one at all stays text. */
+function asNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function asText(value: unknown): string {

@@ -24,20 +24,29 @@ async function revoke(page: Page, email: string) {
   expect(response.status()).toBe(204)
 }
 
-async function signedInProbe(page: Page, who: { email: string; password: string }) {
+async function signedIn(page: Page, who: { email: string; password: string }) {
   await page.goto('/login')
   await signIn(page, who)
   await expect(page).toHaveURL(/\/search/)
-  await page.goto('/dev/session')
-  await expect(page.getByTestId('probe-name')).toBeVisible()
+  await expect(page.getByRole('banner')).toContainText(/Duarte|Brandt/)
+  // Wait until the screen has finished its own reads, so the one that meets the dead session is
+  // the one this test makes.
+  await expect(page.getByRole('listitem').filter({ hasText: 'HQ Core' })).toBeVisible({
+    timeout: 15_000,
+  })
+}
+
+/** One ordinary read on a dead session is all the app needs to notice: picking a point asks for an
+ * estimate of what it would match. */
+async function readSomething(page: Page) {
+  await page.getByRole('listitem').filter({ hasText: 'HQ Core' }).getByRole('checkbox').click()
 }
 
 test('a session that dies mid-use sends the person back to sign in', async ({ page }) => {
-  await signedInProbe(page, OBSERVER)
+  await signedIn(page, OBSERVER)
 
   await revoke(page, OBSERVER.email)
-  // One read on the dead session is all the app needs to notice.
-  await page.getByRole('button', { name: 'Read again' }).click()
+  await readSomething(page)
 
   await expect(page).toHaveURL(/\/login/)
   await expect(
@@ -46,21 +55,21 @@ test('a session that dies mid-use sends the person back to sign in', async ({ pa
 })
 
 test('it remembers where the interruption happened', async ({ page }) => {
-  await signedInProbe(page, OBSERVER)
+  await signedIn(page, OBSERVER)
 
   await revoke(page, OBSERVER.email)
-  await page.getByRole('button', { name: 'Read again' }).click()
+  await readSomething(page)
 
-  await expect(page).toHaveURL(/next=%2Fdev%2Fsession/)
+  await expect(page).toHaveURL(/next=%2Fsearch/)
   await signIn(page, OBSERVER)
-  await expect(page).toHaveURL('/dev/session')
+  await expect(page).toHaveURL(/\/search/)
 })
 
 test('nothing is asked of the dead session afterwards', async ({ page }) => {
-  await signedInProbe(page, OBSERVER)
+  await signedIn(page, OBSERVER)
 
   await revoke(page, OBSERVER.email)
-  await page.getByRole('button', { name: 'Read again' }).click()
+  await readSomething(page)
   await expect(page).toHaveURL(/\/login/)
 
   const afterwards: string[] = []
@@ -73,14 +82,14 @@ test('nothing is asked of the dead session afterwards', async ({ page }) => {
 })
 
 test('the next account does not inherit the previous one', async ({ page }) => {
-  await signedInProbe(page, OBSERVER)
-  await expect(page.getByTestId('probe-name')).toHaveText('Oliver Brandt')
+  await signedIn(page, OBSERVER)
+  await expect(page.getByRole('banner')).toContainText('Oliver Brandt')
 
   await revoke(page, OBSERVER.email)
-  await page.getByRole('button', { name: 'Read again' }).click()
+  await readSomething(page)
   await expect(page).toHaveURL(/\/login/)
 
   await signIn(page, ANALYST)
-  await expect(page).toHaveURL('/dev/session')
-  await expect(page.getByTestId('probe-name')).toHaveText('Ana Duarte')
+  await expect(page).toHaveURL(/\/search/)
+  await expect(page.getByRole('banner')).toContainText('Ana Duarte')
 })

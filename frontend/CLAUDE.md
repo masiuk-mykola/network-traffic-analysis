@@ -99,6 +99,11 @@ read the `http-discipline` skill; the short version:
   an error, and the page reads it once on the server so the browser inherits the answer.
 - A generated schema that is stricter than the live server is relaxed in `@api/response-schemas` with
   the reason next to it — `/v1/meta/columns` publishes a column type the API document omits.
+- A session is rendered from the server's own description of its protocol: its labels, its order, its
+  value kinds. Capture points run two decoder generations, so a published path may name nothing in a
+  given payload; nothing is guessed into a label, and every decoded value the description did not
+  claim is shown under its own path, marked as undescribed.
+- Session ids are uint64 strings. Nothing parses one, and nothing formats one as a number.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.
@@ -111,6 +116,9 @@ read the `http-discipline` skill; the short version:
   zone spelled out, absent values get the shared marker, and identifiers are passed through as
   strings — they are wider than a JavaScript number, so nothing may parse them.
 - Unit tests live next to the code as `*.test.ts(x)`; Playwright specs live in `e2e/`.
+- The e2e suite runs one worker: the API's limits are per account (three search slots, and signing
+  out revokes the account's sessions), so parallel specs are not independent. A spec that starts a
+  search uses the shared helper in `e2e/search-flow.ts`, which hands slots back by id.
 - Conventional commits (commitlint + husky run from the repo root).
 
 ## Agentic workflow

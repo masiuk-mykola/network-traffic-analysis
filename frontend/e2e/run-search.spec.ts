@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { dropSearch, watchSearches } from './search-flow'
+import { clickRun, dropSearch, watchSearches } from './search-flow'
 
 const ANALYST = { email: 'ana@quillmere.example', password: 'demo-analyst' }
 
@@ -10,6 +10,8 @@ test.describe.configure({ mode: 'serial' })
 
 test.beforeEach(async ({ page }) => {
   watchSearches(page)
+  // A job from an earlier test holds its slot until it is deleted, whatever state it ended in.
+  await dropSearch(page)
 })
 
 test.afterEach(async ({ page }) => {
@@ -33,7 +35,7 @@ async function readyQuery(page: Page) {
 test('a search starts and says so', async ({ page }) => {
   await readyQuery(page)
 
-  await page.getByRole('button', { name: 'Run search' }).click()
+  await clickRun(page)
 
   await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
     timeout: 15_000,
@@ -71,7 +73,7 @@ test('pressing twice starts one job, not two', async ({ page }) => {
 
 test('the started search survives a reload', async ({ page }) => {
   await readyQuery(page)
-  await page.getByRole('button', { name: 'Run search' }).click()
+  await clickRun(page)
   await expect(page).toHaveURL(/search=/)
   const url = page.url()
 
@@ -91,13 +93,13 @@ test('a changed query starts another search and frees the first slot', async ({ 
     if (request.url().includes('/api/searches')) verbs.push(request.method())
   })
 
-  await page.getByRole('button', { name: 'Run search' }).click()
+  await clickRun(page)
   await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
     timeout: 15_000,
   })
 
   await page.getByRole('listitem').filter({ hasText: 'DC East' }).getByRole('checkbox').click()
-  await page.getByRole('button', { name: 'Run search' }).click()
+  await clickRun(page)
   await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
     timeout: 15_000,
   })

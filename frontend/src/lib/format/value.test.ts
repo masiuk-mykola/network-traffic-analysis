@@ -45,3 +45,21 @@ describe('formatByColumnType', () => {
     expect(formatByColumnType('ip_port', 'nowhere')).toBe('nowhere')
   })
 })
+
+describe('the kinds a decoded transaction carries', () => {
+  it('reads a single size, quoted as a number or as a string', () => {
+    expect(formatByColumnType('bytes', 2_400)).toBe('2.4 kB')
+    expect(formatByColumnType('bytes', '2400')).toBe('2.4 kB')
+  })
+
+  it('reads a duration under the name the protocol description uses', () => {
+    expect(formatByColumnType('duration_ms', 1_500)).toBe(formatByColumnType('duration', 1_500))
+  })
+
+  it('leaves the text kinds alone, including one it has never seen', () => {
+    expect(formatByColumnType('hex', 'a8740b19')).toBe('a8740b19')
+    expect(formatByColumnType('ja3', 'bd0bf259')).toBe('bd0bf259')
+    expect(formatByColumnType('geo_hint', 'AT')).toBe('AT')
+    expect(formatByColumnType('string', 'SSH-2.0-OpenSSH_8.9p1')).toBe('SSH-2.0-OpenSSH_8.9p1')
+  })
+})
