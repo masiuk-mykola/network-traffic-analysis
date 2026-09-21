@@ -43,8 +43,20 @@ export function SessionView({
   )
 
   if (session.isPending) return <LoadingState label="Loading session" />
+
+  // A failed read loses the session, not the screen: the way back stays, and the retry says it is
+  // retrying rather than looking like a button that did nothing.
   if (session.isError) {
-    return <ErrorState error={session.error} onRetry={() => void session.refetch()} />
+    return (
+      <div className="space-y-6">
+        <div>{back}</div>
+        <ErrorState
+          error={session.error}
+          onRetry={() => void session.refetch()}
+          retrying={session.isFetching}
+        />
+      </div>
+    )
   }
 
   if (isNotFound(session.data)) {

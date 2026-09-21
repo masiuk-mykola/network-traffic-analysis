@@ -1,7 +1,7 @@
 'use client'
 
-import { AlertTriangle, LogIn, ShieldAlert } from 'lucide-react'
-import { type ReactElement } from 'react'
+import { AlertTriangle, Loader2, LogIn, ShieldAlert } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { describeFailure } from '@api/failure'
 import { Button } from '@/components/ui'
@@ -12,13 +12,22 @@ type ErrorStateProps = {
   error: unknown
   /** Omit it when there is nothing sensible to re-run; the button only appears when both it and the failure allow. */
   onRetry?: () => void
+  /** True while the read is being attempted again, so a retry is never silent. */
+  retrying?: boolean
   variant?: 'page' | 'region'
   className?: string
 }
 
-export function ErrorState({ error, onRetry, variant = 'region', className }: ErrorStateProps) {
+export function ErrorState({
+  error,
+  onRetry,
+  retrying = false,
+  variant = 'region',
+  className,
+}: ErrorStateProps) {
   const failure = describeFailure(error)
   const showRetry = failure.retryable && onRetry !== undefined
+  const attempt = useAttempt(retrying)
 
   return (
     <div
@@ -35,23 +44,57 @@ export function ErrorState({ error, onRetry, variant = 'region', className }: Er
         <p className="text-muted max-w-prose text-sm">{failure.detail}</p>
       </div>
       {showRetry ? (
-        // Keyed by the failure: a later refusal restarts the wait instead of inheriting
-        // a countdown that already reached zero.
-        <RetryButton key={failure.id ?? 'once'} waitMs={failure.retryAfterMs} onRetry={onRetry} />
+        // Keyed by the failure so a later refusal restarts the wait instead of inheriting a
+        // countdown that already reached zero. A dropped connection carries no identity, so the
+        // attempt itself is the key — otherwise two of them in a row would share one button.
+        <RetryButton
+          key={failure.id ?? `attempt-${attempt}`}
+          waitMs={failure.retryAfterMs}
+          retrying={retrying}
+          onRetry={onRetry}
+        />
       ) : null}
       {failure.code ? <p className="text-muted text-xs">{failure.code}</p> : null}
     </div>
   )
 }
 
-function RetryButton({ waitMs, onRetry }: { waitMs: number | null; onRetry: () => void }) {
+/** Counts the attempts this state has seen, so a failure with no identity of its own still has one. */
+function useAttempt(retrying: boolean): number {
+  const [attempt, setAttempt] = useState(0)
+  const wasRetrying = useRef(retrying)
+
+  useEffect(() => {
+    if (wasRetrying.current && !retrying) setAttempt((count) => count + 1)
+    wasRetrying.current = retrying
+  }, [retrying])
+
+  return attempt
+}
+
+function RetryButton({
+  waitMs,
+  retrying,
+  onRetry,
+}: {
+  waitMs: number | null
+  retrying: boolean
+  onRetry: () => void
+}) {
   const waitSeconds = useCountdown(waitMs)
 
   return (
-    <Button variant="secondary" size="sm" onClick={onRetry} disabled={waitSeconds > 0}>
-      {waitSeconds > 0 ? `Try again in ${waitSeconds} s` : 'Try again'}
+    <Button variant="secondary" size="sm" onClick={onRetry} disabled={retrying || waitSeconds > 0}>
+      {retrying ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
+      {retryLabel(retrying, waitSeconds)}
     </Button>
   )
+}
+
+function retryLabel(retrying: boolean, waitSeconds: number): string {
+  if (retrying) return 'Trying again'
+  if (waitSeconds > 0) return `Try again in ${waitSeconds} s`
+  return 'Try again'
 }
 
 function failureIcon(code: string | null, retryable: boolean): ReactElement {

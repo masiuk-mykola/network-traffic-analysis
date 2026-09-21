@@ -124,6 +124,10 @@ read the `http-discipline` skill; the short version:
 - Loading, empty and error states come from `@/components/states`, and transient failures from
   `useToast` — screens never hand-roll their own. What a failure says and whether it offers a
   retry is decided once, in `@api/failure`.
+  A failure belongs to the part that needed the read, never to the screen: a refused capture-point
+  list keeps the window, the conditions and the run control on screen, and a refused session keeps
+  the way back. A retry says it is retrying (`retrying` on the error state) and re-arms even for a
+  dropped connection, which carries no identity of its own.
 - Forms are React Hook Form + zod through `@hookform/resolvers`, with the shared `Field` doing the
   labelling; the schema mirrors the API's own limits so a doomed attempt never leaves the browser.
 - Values are formatted in `@lib/format` and nowhere else: timestamps are shown in UTC with the
@@ -133,6 +137,10 @@ read the `http-discipline` skill; the short version:
 - The e2e suite runs one worker: the API's limits are per account (three search slots, and signing
   out revokes the account's sessions), so parallel specs are not independent. A spec that starts a
   search uses the shared helper in `e2e/search-flow.ts`, which hands slots back by id.
+- Failure paths are driven deterministically, never statistically: a single read is refused with
+  `page.route` (chaos cannot target a path, and refusing everything takes the guard down with it),
+  and the server's chaos profile is used only for what it alone can do — expiring tokens. Any spec
+  that touches chaos restores `calm` in `afterEach`, or the rest of the suite inherits the storm.
 - Conventional commits (commitlint + husky run from the repo root).
 
 ## Agentic workflow

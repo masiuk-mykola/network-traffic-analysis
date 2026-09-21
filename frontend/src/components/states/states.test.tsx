@@ -74,6 +74,40 @@ describe('ErrorState', () => {
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
+  it('says it is re-attempting while the read is in flight', async () => {
+    const error = await httpError({ code: 'unavailable', detail: 'busy' }, { status: 503 })
+    const { rerender } = render(<ErrorState error={error} onRetry={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
+
+    rerender(<ErrorState error={error} onRetry={vi.fn()} retrying />)
+
+    const control = screen.getByRole('button', { name: /trying again/i })
+    expect(control).toBeDisabled()
+  })
+
+  it('re-arms after a second failure of a kind that carries no identity', async () => {
+    const onRetry = vi.fn()
+    const { rerender } = render(
+      <ErrorState error={new TypeError('fetch failed')} onRetry={onRetry} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    // The same kind of failure again: the control must be live, not left as it was.
+    rerender(<ErrorState error={new TypeError('fetch failed')} onRetry={onRetry} retrying />)
+    rerender(<ErrorState error={new TypeError('fetch failed')} onRetry={onRetry} />)
+
+    const control = screen.getByRole('button', { name: 'Try again' })
+    expect(control).toBeEnabled()
+    await userEvent.click(control)
+    expect(onRetry).toHaveBeenCalledTimes(2)
+  })
+
+  it('offers a retry for a dropped connection, which carries no status at all', () => {
+    render(<ErrorState error={new TypeError('fetch failed')} onRetry={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
+  })
+
   it('offers no retry for a gone session, even when a handler is given', async () => {
     render(
       <ErrorState

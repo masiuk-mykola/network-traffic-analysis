@@ -2,6 +2,30 @@ import { expect, type Page } from '@playwright/test'
 
 export const ANALYST = { email: 'ana@quillmere.example', password: 'demo-analyst' }
 
+const API = process.env.CAPTURE_API_URL ?? 'http://localhost:8700'
+const ADMIN_TOKEN = process.env.CAP_ADMIN_TOKEN ?? 'lf-dev-admin'
+
+/**
+ * Make the server misbehave on purpose. Rates are overridden rather than left to a profile's
+ * probabilities, because an assertion against a probability is a coin toss.
+ */
+export async function setChaos(
+  page: Page,
+  profile: 'calm' | 'flaky' | 'storm' | 'expiring-tokens',
+  overrides: Record<string, unknown> = {},
+) {
+  const response = await page.request.put(`${API}/v1/__admin/chaos`, {
+    headers: { 'x-admin-token': ADMIN_TOKEN },
+    data: { profile, overrides },
+  })
+  expect(response.status()).toBe(200)
+}
+
+/** Put the server back the way the rest of the suite expects to find it. */
+export async function calmDown(page: Page) {
+  await setChaos(page, 'calm')
+}
+
 /** An account has three search slots, and a suite of specs can find them all taken for a while. */
 const ATTEMPTS = 3
 const WAIT_MS = 45_000

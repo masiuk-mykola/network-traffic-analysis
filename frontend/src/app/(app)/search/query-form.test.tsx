@@ -64,18 +64,26 @@ afterEach(() => {
 })
 
 describe('QueryForm', () => {
-  it('cannot be submitted while the points are loading', async () => {
+  it('cannot be submitted while the points are loading, and says where the wait is', async () => {
     renderForm(() => new Promise<Response>(() => {}))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading capture points')
-    expect(screen.queryByRole('button', { name: 'Run search' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Loading capture points')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Run search' })).toBeDisabled()
   })
 
-  it('offers a retry when the points cannot be fetched', async () => {
+  it('keeps the rest of the form when the points cannot be fetched', async () => {
     renderForm(async () => Response.json({ code: 'unavailable', detail: 'busy' }, { status: 503 }))
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    // The control is there whether it is offering a retry or in the middle of one.
+    expect(
+      (await screen.findAllByRole('button', { name: /try(ing)? again/i })).length,
+    ).toBeGreaterThan(0)
+    // The failure belongs to the capture points; the rest of the screen is still worth having.
+    expect(screen.getByLabelText('From (UTC)')).toBeInTheDocument()
+    expect(screen.getByLabelText('To (UTC)')).toBeInTheDocument()
+    // And nothing can be started from a list that never arrived.
+    expect(screen.getByRole('button', { name: 'Run search' })).toBeDisabled()
   })
 
   it('says so when the account may read none', async () => {
@@ -102,7 +110,8 @@ describe('QueryForm', () => {
     renderForm(async () => Response.json(SENSORS, { status: 200 }))
 
     const to = await screen.findByLabelText('To (UTC)')
-    expect(to).toHaveValue('2025-10-27T12:00')
+    // The window is derived from the points, so it fills in once they arrive.
+    await waitFor(() => expect(to).toHaveValue('2025-10-27T12:00'))
   })
 
   it('mirrors the choices into the address bar without a round trip', async () => {

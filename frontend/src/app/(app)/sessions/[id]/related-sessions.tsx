@@ -73,7 +73,14 @@ function Body({
     if (isHttpError(related.error) && related.error.status === 404) {
       return <p className="text-muted text-sm">The server has nothing around this session.</p>
     }
-    return <ErrorState error={related.error} onRetry={onRetry} className="min-h-0 py-2" />
+    return (
+      <ErrorState
+        error={related.error}
+        onRetry={onRetry}
+        retrying={related.isFetching}
+        className="min-h-0 py-2"
+      />
+    )
   }
 
   if (rows.length === 0) {

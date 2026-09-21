@@ -18,7 +18,6 @@ import type { SearchStatus } from '@lib/search/search-state'
 import { useSensors } from '@lib/search/use-sensors'
 import { useDebounced } from '@lib/use-debounced'
 import { defaultWindow } from '@lib/search/window'
-import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Field } from '@/components/form/field'
 import { Input } from '@/components/ui'
 
@@ -26,7 +25,7 @@ import { ConditionBuilder } from './condition-builder'
 import { EstimateLine } from './estimate-line'
 import { ResultsTable } from './results-table'
 import { RunControl } from './run-control'
-import { SensorOption } from './sensor-option'
+import { SensorList } from './sensor-list'
 
 const ESTIMATE_DELAY_MS = 400
 
@@ -86,20 +85,6 @@ export function QueryForm({
     }
   }, [query, landmark, router])
 
-  if (sensors.isPending) return <LoadingState label="Loading capture points" />
-  if (sensors.isError) {
-    return <ErrorState error={sensors.error} onRetry={() => void sensors.refetch()} />
-  }
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        title="No capture points to search"
-        description="This account cannot read any capture point. Ask for access, or sign in as someone who can."
-      />
-    )
-  }
-
-  const atLimit = query.sensorIds.length >= MAX_SENSORS
   const problem = describeQuery(query, fields.data ?? {})
 
   return (
@@ -110,34 +95,22 @@ export function QueryForm({
         // Running the search is the next step; this form only decides what would be searched.
       }}
     >
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Capture points</legend>
-        <p className="text-muted text-xs">
-          Between one and {MAX_SENSORS}. A point that is behind has not reported its most recent
-          traffic yet.
-        </p>
-        <ul className="border-border divide-border overflow-hidden rounded-lg border">
-          {items.map((sensor) => {
-            const checked = query.sensorIds.includes(sensor.id)
-            return (
-              <SensorOption
-                key={sensor.id}
-                sensor={sensor}
-                checked={checked}
-                disabled={!checked && atLimit}
-                onToggle={(next) => {
-                  setState((current) => ({
-                    ...current,
-                    sensorIds: next
-                      ? [...current.sensorIds, sensor.id].slice(0, MAX_SENSORS)
-                      : current.sensorIds.filter((id) => id !== sensor.id),
-                  }))
-                }}
-              />
-            )
-          })}
-        </ul>
-      </fieldset>
+      <SensorList
+        items={items}
+        chosen={query.sensorIds}
+        isPending={sensors.isPending}
+        error={sensors.isError ? sensors.error : null}
+        retrying={sensors.isFetching}
+        onRetry={() => void sensors.refetch()}
+        onToggle={(id, next) => {
+          setState((current) => ({
+            ...current,
+            sensorIds: next
+              ? [...current.sensorIds, id].slice(0, MAX_SENSORS)
+              : current.sensorIds.filter((chosen) => chosen !== id),
+          }))
+        }}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="From (UTC)">

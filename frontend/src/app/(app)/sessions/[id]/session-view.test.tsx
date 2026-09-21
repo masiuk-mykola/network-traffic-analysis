@@ -247,6 +247,24 @@ describe('SessionView', () => {
     expect(facts).toHaveTextContent('raw capture is still held')
   })
 
+  it('loses the session but not the screen when the read fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ code: 'unavailable', detail: 'busy' }, { status: 503 })),
+    )
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <SessionView sessionId="72057639299711028" />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    // The way back is the one thing that must never be lost to a failed read.
+    expect(screen.getByRole('button', { name: /back to results/i })).toBeVisible()
+    expect(await screen.findByRole('button', { name: /try(ing)? again/i })).toBeInTheDocument()
+  })
+
   it('says plainly when there is no such session', () => {
     renderView(NOT_FOUND)
 

@@ -87,7 +87,14 @@ function Body({
 }) {
   if (flow.isPending) return <LoadingState label="Reading the traffic" className="min-h-24" />
   if (flow.isError) {
-    return <ErrorState error={flow.error} onRetry={onRetry} className="min-h-0 py-2" />
+    return (
+      <ErrorState
+        error={flow.error}
+        onRetry={onRetry}
+        retrying={flow.isFetching}
+        className="min-h-0 py-2"
+      />
+    )
   }
 
   // The server reports the width it applied; everything shown is labelled with that, not with what
