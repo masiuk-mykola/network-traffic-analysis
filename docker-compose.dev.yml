@@ -1,0 +1,22 @@
+# Dev overlay: runs the frontend from the source tree with hot reload, against the API container.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Without this file `docker compose up` builds the production image instead.
+
+services:
+  web:
+    build:
+      context: ./frontend
+      target: deps
+    command: npm run dev
+    environment:
+      CAPTURE_API_URL: http://simulator:8700
+      # macOS bind mounts do not deliver inotify events reliably; poll instead.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - ./backend/openapi.json:/backend/openapi.json:ro
+      - /app/node_modules
+      - /app/.next

@@ -17,6 +17,9 @@ services:
       context: ./backend
     image: capture-api:local
     container_name: capture-api
+    # The image's own CMD is `capture_api`, but the console script installed by
+    # pyproject.toml is `capture-api`; without this the container exec-fails on boot.
+    command: ["capture-api", "serve"]
     init: true
     restart: unless-stopped
     stop_grace_period: 5s
