@@ -111,6 +111,8 @@ function headline(kind: string | undefined, running: boolean): string {
       return 'Search cancelled'
     case 'expired':
       return 'Search discarded'
+    case 'missing':
+      return 'Search not found'
     default:
       return running ? 'Searching…' : 'Search'
   }
@@ -120,7 +122,7 @@ function iconFor(kind: string | undefined): ReactElement {
   const className = 'size-4 shrink-0'
   if (kind === 'done') return <CircleCheck aria-hidden className={`${className} text-accent`} />
   if (kind === 'failed') return <TriangleAlert aria-hidden className={`${className} text-danger`} />
-  if (kind === 'cancelled' || kind === 'expired') {
+  if (kind === 'cancelled' || kind === 'expired' || kind === 'missing') {
     return <CircleSlash aria-hidden className={`${className} text-muted`} />
   }
   return <Clock aria-hidden className={`${className} text-muted animate-pulse`} />

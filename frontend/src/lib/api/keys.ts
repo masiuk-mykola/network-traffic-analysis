@@ -8,7 +8,7 @@
  * whole subtree.
  *
  * Optional arguments are normalized to `null` rather than omitted, so `(id)` and `(id, undefined)`
- * cannot end up as two entries. Ids and cursors are opaque strings and are never re-encoded.
+ * cannot end up as two entries. Ids are opaque strings and are never re-encoded.
  */
 
 export type QueryKey = readonly unknown[]
@@ -26,8 +26,9 @@ export const estimateKey = (search: string) => ['estimate', search] as const
 
 export const searchKey = (searchId: string) => ['search', searchId] as const
 
-export const searchResultsKey = (searchId: string, cursor?: string) =>
-  ['search', searchId, 'results', cursor ?? null] as const
+/** The order is part of the identity: a cursor belongs to one order and the server refuses it in another. */
+export const searchResultsKey = (searchId: string, sort?: string) =>
+  ['search', searchId, 'results', sort ?? null] as const
 
 export const sessionKey = (sessionId: string) => ['session', sessionId] as const
 

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MAX_POLL_MS } from './poll-interval'
-import { isExpired } from './search-state'
+import { isExpired, isMissing } from './search-state'
 import { useSearch } from './use-search'
 
 const RUNNING = {
@@ -99,6 +99,18 @@ describe('useSearch', () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined())
     expect(isExpired(result.current.data!)).toBe(true)
+    expect(result.current.isError).toBe(false)
+  })
+
+  it('treats a job the server does not have as an ending too', async () => {
+    stubFetch(async () =>
+      Response.json({ code: 'search_not_found', detail: "No search 'srch-1'." }, { status: 404 }),
+    )
+
+    const { result } = renderHook(() => useSearch('srch-1'), { wrapper })
+
+    await waitFor(() => expect(result.current.data).toBeDefined())
+    expect(isMissing(result.current.data!)).toBe(true)
     expect(result.current.isError).toBe(false)
   })
 })

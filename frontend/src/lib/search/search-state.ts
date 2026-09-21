@@ -8,10 +8,18 @@ export type Search = components['schemas']['Search']
  */
 export const EXPIRED = { expired: true } as const
 
-export type SearchStatus = Search | typeof EXPIRED
+/**
+ * A job this account cannot see: a shared address from another account, an id that never existed,
+ * or one already deleted. The server answers all three the same way, and so do we.
+ */
+export const MISSING = { missing: true } as const
+
+type Gone = typeof EXPIRED | typeof MISSING
+
+export type SearchStatus = Search | Gone
 
 export type Ending = {
-  kind: 'done' | 'failed' | 'cancelled' | 'expired'
+  kind: 'done' | 'failed' | 'cancelled' | 'expired' | 'missing'
   detail: string | null
 }
 
@@ -19,8 +27,17 @@ export function isExpired(status: SearchStatus): status is typeof EXPIRED {
   return 'expired' in status
 }
 
+export function isMissing(status: SearchStatus): status is typeof MISSING {
+  return 'missing' in status
+}
+
+/** Neither kind of gone job carries a state, progress or rows. */
+export function isGone(status: SearchStatus): status is Gone {
+  return isExpired(status) || isMissing(status)
+}
+
 export function isRunning(status: SearchStatus): boolean {
-  return !isExpired(status) && (status.state === 'queued' || status.state === 'running')
+  return !isGone(status) && (status.state === 'queued' || status.state === 'running')
 }
 
 export function isFinished(status: SearchStatus): boolean {
@@ -28,6 +45,13 @@ export function isFinished(status: SearchStatus): boolean {
 }
 
 export function endingOf(status: SearchStatus): Ending | null {
+  if (isMissing(status)) {
+    return {
+      kind: 'missing',
+      detail: 'The server no longer has this search, or it belongs to someone else. Run it again.',
+    }
+  }
+
   if (isExpired(status)) {
     return {
       kind: 'expired',
@@ -57,7 +81,7 @@ export type Progress = {
 }
 
 export function progressOf(status: SearchStatus): Progress {
-  if (isExpired(status)) {
+  if (isGone(status)) {
     return { percent: 0, scanned: 0, total: null, matched: null, matchedIsEstimate: false }
   }
 

@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { SearchStatus } from '@lib/search/search-state'
+import { MISSING, type SearchStatus } from '@lib/search/search-state'
+import type { SortKey } from '@lib/search/sort'
 
 import { ResultsTable } from './results-table'
 
@@ -39,6 +41,14 @@ const COLUMNS = {
       default_visible: true,
       sortable: false,
       width_hint: 360,
+    },
+    {
+      key: 'bytes',
+      label: 'Bytes',
+      type: 'bytes',
+      default_visible: true,
+      sortable: true,
+      width_hint: 120,
     },
     {
       key: 'dst_country',
@@ -84,6 +94,7 @@ const finished = { state: 'done' } as unknown as SearchStatus
 function renderTable(
   results: Record<string, unknown> | (() => Promise<Response>),
   status: SearchStatus = finished,
+  { sort = '-ts', onSortChange }: { sort?: SortKey; onSortChange?: (sort: SortKey) => void } = {},
 ) {
   const calls: string[] = []
   vi.stubGlobal(
@@ -98,7 +109,12 @@ function renderTable(
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <ResultsTable searchId="srch-1" status={status} />
+      <ResultsTable
+        searchId="srch-1"
+        status={status}
+        sort={sort}
+        onSortChange={onSortChange ?? (() => {})}
+      />
     </QueryClientProvider>,
   )
   return calls
@@ -129,7 +145,7 @@ describe('ResultsTable', () => {
     const client = new QueryClient()
     render(
       <QueryClientProvider client={client}>
-        <ResultsTable searchId={null} status={undefined} />
+        <ResultsTable searchId={null} status={undefined} sort="-ts" onSortChange={() => {}} />
       </QueryClientProvider>,
     )
 
@@ -207,5 +223,42 @@ describe('ResultsTable', () => {
     renderTable(page([row('1')], { complete: false }), running)
 
     expect(await screen.findByRole('button', { name: 'Start' })).toBeDisabled()
+  })
+
+  it('sorts on a column the server publishes as sortable', async () => {
+    const changes: SortKey[] = []
+    renderTable(page([row('1')]), finished, { onSortChange: (sort) => changes.push(sort) })
+    await screen.findByRole('table')
+
+    await userEvent.click(screen.getByRole('button', { name: /bytes/i }))
+
+    expect(changes).toEqual(['-bytes'])
+  })
+
+  it('marks the order in force and offers no control on the other columns', async () => {
+    renderTable(page([row('1')]), finished, { sort: '-bytes' })
+    await screen.findByRole('table')
+
+    expect(screen.getByRole('columnheader', { name: /bytes/i })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    )
+    expect(screen.queryByRole('button', { name: 'Summary' })).toBeNull()
+  })
+
+  it('refuses a different order while the job is still running, and says why', async () => {
+    renderTable(page([row('1')], { complete: false }), running)
+    await screen.findByRole('table')
+
+    const control = screen.getByRole('button', { name: /bytes/i })
+    expect(control).toBeDisabled()
+    expect(control).toHaveAttribute('title', 'A different order needs a finished search')
+  })
+
+  it('asks for no rows at all when the server no longer has the job', async () => {
+    const calls = renderTable(page([row('1')]), MISSING)
+
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0))
+    expect(calls.filter((url) => url.includes('/results'))).toEqual([])
   })
 })

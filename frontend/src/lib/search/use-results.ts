@@ -7,6 +7,7 @@ import { searchResultsKey } from '@api/keys'
 import type { components } from '@api/schema'
 
 import { nextPollDelay } from './poll-interval'
+import { DEFAULT_SORT, type SortKey } from './sort'
 
 type SearchResults = components['schemas']['SearchResults']
 
@@ -20,13 +21,22 @@ export const PAGE_SIZE = 500
  *
  * Only the first is a next page. The middle case would spin an infinite query, so it is handled by
  * a timed refetch that disappears the moment the job stops running.
+ *
+ * The order is part of the key, never a parameter of the same query: a cursor belongs to the order
+ * it was issued in, and the server rejects it in any other. It is also asked for only once the job
+ * has finished — sorting a running search is refused, and a refused request is scored against us.
  */
-export function useResults(searchId: string | null, isRunning: boolean) {
+export function useResults(
+  searchId: string | null,
+  isRunning: boolean,
+  sort: SortKey = DEFAULT_SORT,
+) {
   return useInfiniteQuery({
-    queryKey: searchResultsKey(searchId ?? ''),
+    queryKey: searchResultsKey(searchId ?? '', sort),
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) => {
       const query = new URLSearchParams({ limit: String(PAGE_SIZE) })
+      if (!isRunning && sort !== DEFAULT_SORT) query.set('sort', sort)
       // The cursor is opaque and bound to this search: it goes back exactly as it arrived.
       if (pageParam) query.set('cursor', pageParam)
       return fetchJson<SearchResults>(`searches/${encodeURIComponent(searchId ?? '')}/results`, {
@@ -46,5 +56,7 @@ export function useResults(searchId: string | null, isRunning: boolean) {
     },
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
+    // A finished search cannot gain rows, so returning to this screen re-reads none of its pages.
+    staleTime: isRunning ? 0 : Infinity,
   })
 }

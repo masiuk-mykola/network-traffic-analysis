@@ -91,6 +91,12 @@ read the `http-discipline` skill; the short version:
   publishes (order, default visibility, widths, what may be sorted), never from a hard-coded set, and
   a column type or key it has never seen renders as text rather than breaking. While the job runs the
   order is fixed, and a page with no cursor means caught up, not finished.
+- The order lives in the address with the query and the job, and is part of the results' cache
+  identity — a cursor belongs to one order and the server rejects it in another. It is sent only to
+  a finished job, because sorting a running one is refused. Starting a search or changing the order
+  goes through the router so the entry can be returned to; every other edit rewrites the current
+  address without a server render. A job the server does not have (404) is an ending to explain, not
+  an error, and the page reads it once on the server so the browser inherits the answer.
 - A generated schema that is stricter than the live server is relaxed in `@api/response-schemas` with
   the reason next to it — `/v1/meta/columns` publishes a column type the API document omits.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):

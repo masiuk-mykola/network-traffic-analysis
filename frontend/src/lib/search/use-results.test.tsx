@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { SortKey } from './sort'
 import { PAGE_SIZE, useResults } from './use-results'
 
 const ROW = { id: '1', summary: 'one' }
@@ -69,6 +70,47 @@ describe('useResults', () => {
 
     await waitFor(() => expect(urls).toHaveLength(2))
     expect(urls[1]).toContain(`cursor=${encodeURIComponent(cursor)}`)
+  })
+
+  it('asks for an order only once the job has finished', async () => {
+    const running = stubFetch([page({ next_cursor: null, complete: false })])
+    const { result: whileRunning } = renderHook(() => useResults('srch-1', true, '-bytes'), {
+      wrapper,
+    })
+    await waitFor(() => expect(whileRunning.current.isSuccess).toBe(true))
+    expect(running[0]).not.toContain('sort=')
+
+    vi.unstubAllGlobals()
+    const finished = stubFetch([page()])
+    const { result } = renderHook(() => useResults('srch-1', false, '-bytes'), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(finished[0]).toContain('sort=-bytes')
+  })
+
+  it('leaves the default order out of the request', async () => {
+    const urls = stubFetch([page()])
+
+    const { result } = renderHook(() => useResults('srch-1', false, '-ts'), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(urls[0]).not.toContain('sort=')
+  })
+
+  it('starts a new order from the first page, carrying no cursor across', async () => {
+    const cursor = 'cursor-from-the-other-order'
+    const urls = stubFetch([page({ next_cursor: cursor, complete: false }), page()])
+
+    const { result, rerender } = renderHook(({ sort }) => useResults('srch-1', false, sort), {
+      wrapper,
+      initialProps: { sort: '-ts' as SortKey },
+    })
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true))
+
+    rerender({ sort: 'risk' })
+
+    await waitFor(() => expect(urls).toHaveLength(2))
+    expect(urls[1]).not.toContain('cursor=')
+    expect(urls[1]).toContain('sort=risk')
   })
 
   it('treats a caught-up page as no next page', async () => {

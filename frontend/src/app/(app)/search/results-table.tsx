@@ -1,13 +1,15 @@
 'use client'
 
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 
 import type { components } from '@api/schema'
 import { formatCount } from '@lib/format'
 import { rowValue } from '@lib/search/row-value'
-import { isRunning, type SearchStatus } from '@lib/search/search-state'
+import { isGone, isRunning, type SearchStatus } from '@lib/search/search-state'
+import { directionOf, sortFieldFor, toggleSort, type SortKey } from '@lib/search/sort'
 import { useColumns, type ColumnDef } from '@lib/search/use-columns'
 import { useResults } from '@lib/search/use-results'
 import { cn } from '@lib/utils'
@@ -26,13 +28,21 @@ const SCROLLER_HEIGHT = 448
 export function ResultsTable({
   searchId,
   status,
+  sort,
+  onSortChange,
 }: {
   searchId: string | null
   status: SearchStatus | undefined
+  sort: SortKey
+  onSortChange: (sort: SortKey) => void
 }) {
   const running = status ? isRunning(status) : false
+  const gone = status ? isGone(status) : false
+  // Rows are read only once the job has answered for itself: asking about one the server does not
+  // have earns a 404, and a 404 asked twice is scored against us.
+  const known = status !== undefined && !gone
   const columns = useColumns()
-  const results = useResults(searchId, running)
+  const results = useResults(known ? searchId : null, running, sort)
   const scroller = useRef<HTMLDivElement>(null)
 
   const rows = results.data?.pages.flatMap((page) => page.items) ?? []
@@ -58,7 +68,8 @@ export function ResultsTable({
     if (nearEnd && canLoadMore) void results.fetchNextPage()
   }, [nearEnd, canLoadMore, results])
 
-  if (!searchId) return null
+  // A job the server does not have has no rows to show; the progress panel explains it instead.
+  if (!searchId || gone) return null
   if (columns.isPending || results.isPending) return <LoadingState label="Loading results" />
   if (columns.isError) {
     return <ErrorState error={columns.error} onRetry={() => void columns.refetch()} />
@@ -96,7 +107,13 @@ export function ResultsTable({
         >
           <div role="row" className="border-border bg-surface/60 flex border-b font-medium">
             {visible.map((column) => (
-              <HeaderCell key={column.key} column={column} running={running} />
+              <HeaderCell
+                key={column.key}
+                column={column}
+                running={running}
+                sort={sort}
+                onSortChange={onSortChange}
+              />
             ))}
           </div>
 
@@ -144,7 +161,21 @@ export function ResultsTable({
   )
 }
 
-function HeaderCell({ column, running }: { column: ColumnDef; running: boolean }) {
+function HeaderCell({
+  column,
+  running,
+  sort,
+  onSortChange,
+}: {
+  column: ColumnDef
+  running: boolean
+  sort: SortKey
+  onSortChange: (sort: SortKey) => void
+}) {
+  // The server publishes what may be sorted; we can only send it an order it named.
+  const sortable = column.sortable && sortFieldFor(column.key) !== null
+  const direction = sortable ? directionOf(sort, column.key) : null
+
   const label = (
     <span className="truncate" style={{ width: column.width_hint }}>
       {column.label}
@@ -152,15 +183,24 @@ function HeaderCell({ column, running }: { column: ColumnDef; running: boolean }
   )
 
   return (
-    <div role="columnheader" className="shrink-0 px-3 py-2">
-      {column.sortable ? (
+    <div role="columnheader" aria-sort={direction ?? undefined} className="shrink-0 px-3 py-2">
+      {sortable ? (
         <button
           type="button"
           disabled={running}
           title={running ? 'A different order needs a finished search' : undefined}
-          className="hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => onSortChange(toggleSort(sort, column.key))}
+          className={cn(
+            'flex w-full items-center gap-1 text-left',
+            'hover:text-accent disabled:cursor-not-allowed disabled:opacity-60',
+            direction && 'text-accent',
+          )}
         >
           {label}
+          {direction === 'descending' ? (
+            <ArrowDown aria-hidden className="size-3 shrink-0" />
+          ) : null}
+          {direction === 'ascending' ? <ArrowUp aria-hidden className="size-3 shrink-0" /> : null}
         </button>
       ) : (
         label

@@ -1,26 +1,21 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const ANALYST = { email: 'ana@quillmere.example', password: 'demo-analyst' }
+import { dropSearch, signIn, startSearch, watchSearches } from './search-flow'
 
 // Searches hold slots; run one at a time and hand them back.
 test.describe.configure({ mode: 'serial' })
 
+test.beforeEach(async ({ page }) => {
+  watchSearches(page)
+})
+
 test.afterEach(async ({ page }) => {
-  const started = new URL(page.url()).searchParams.get('search')
-  if (started) await page.request.delete(`/api/searches/${started}`).catch(() => undefined)
+  await dropSearch(page)
 })
 
 async function runSearch(page: Page) {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(ANALYST.email)
-  await page.getByLabel('Password').fill(ANALYST.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL(/\/search/)
-  await page.getByRole('listitem').filter({ hasText: 'HQ Core' }).getByRole('checkbox').click()
-  await page.getByRole('button', { name: 'Run search' }).click()
-  await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
-    timeout: 15_000,
-  })
+  await signIn(page)
+  await startSearch(page)
 }
 
 test('rows arrive from a real search, with the columns the server publishes', async ({ page }) => {
@@ -38,11 +33,7 @@ test('rows arrive from a real search, with the columns the server publishes', as
 
 test('nothing is asked for before a search exists', async ({ page }) => {
   const asked: string[] = []
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(ANALYST.email)
-  await page.getByLabel('Password').fill(ANALYST.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL(/\/search/)
+  await signIn(page)
 
   page.on('request', (request) => {
     if (request.url().includes('/results')) asked.push(request.url())

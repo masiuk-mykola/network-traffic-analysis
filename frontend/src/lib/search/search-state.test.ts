@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { components } from '@api/schema'
 
-import { endingOf, EXPIRED, isFinished, isRunning, progressOf } from './search-state'
+import { endingOf, EXPIRED, isFinished, isRunning, MISSING, progressOf } from './search-state'
 
 type Search = components['schemas']['Search']
 
@@ -38,6 +38,16 @@ describe('isRunning / isFinished', () => {
   it('counts a discarded job as finished, and never as running', () => {
     expect(isFinished(EXPIRED)).toBe(true)
     expect(isRunning(EXPIRED)).toBe(false)
+  })
+})
+
+describe('a job the server does not have', () => {
+  it('is an ending of its own, not a failure and not an expiry', () => {
+    expect(isRunning(MISSING)).toBe(false)
+    expect(isFinished(MISSING)).toBe(true)
+    expect(endingOf(MISSING)?.kind).toBe('missing')
+    expect(endingOf(MISSING)?.detail).toMatch(/run it again/i)
+    expect(progressOf(MISSING).percent).toBe(0)
   })
 })
 

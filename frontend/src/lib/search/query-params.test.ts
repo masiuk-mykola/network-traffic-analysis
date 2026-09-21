@@ -58,3 +58,18 @@ describe('toQueryString', () => {
     expect(toQueryString(EMPTY_QUERY)).toBe('')
   })
 })
+
+describe('the order in the address', () => {
+  it('reads one the server publishes and ignores anything else', () => {
+    expect(parseQuery(new URLSearchParams('sort=-bytes')).sort).toBe('-bytes')
+    expect(parseQuery(new URLSearchParams('sort=summary')).sort).toBe('-ts')
+    expect(parseQuery(new URLSearchParams('')).sort).toBe('-ts')
+  })
+
+  it('writes it only when it is not the default', () => {
+    const base = { ...EMPTY_QUERY, sensorIds: ['hq-core'] }
+
+    expect(toQueryString({ ...base, sort: '-ts' })).not.toContain('sort')
+    expect(toQueryString({ ...base, sort: 'risk' })).toContain('sort=risk')
+  })
+})

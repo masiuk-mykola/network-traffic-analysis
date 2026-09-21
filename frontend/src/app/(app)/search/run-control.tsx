@@ -6,6 +6,7 @@ import { describeFailure } from '@api/failure'
 import type { components } from '@api/schema'
 import type { FieldCatalogue } from '@lib/search/condition'
 import type { QueryState } from '@lib/search/query-params'
+import { isGone } from '@lib/search/search-state'
 import { toSearchBody } from '@lib/search/search-body'
 import { useRunSearch } from '@lib/search/use-run-search'
 import { useCountdown } from '@lib/use-countdown'
@@ -77,9 +78,9 @@ export function RunControl({ query, fields, problem, onStarted, watching }: RunC
   )
 }
 
-/** A discarded job has no warnings to report; a running or finished one may. */
+/** A job that is gone has no warnings to report; a running or finished one may. */
 function warningsOf(status: RunControlProps['watching']['status']): Search['warnings'] {
-  return status && !('expired' in status) ? status.warnings : []
+  return status && !isGone(status) ? status.warnings : []
 }
 
 /**

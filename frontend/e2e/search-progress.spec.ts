@@ -1,13 +1,18 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { dropSearch, watchSearches } from './search-flow'
+
 const ANALYST = { email: 'ana@quillmere.example', password: 'demo-analyst' }
 
 // Searches take slots; these tests take them one at a time and give them back.
 test.describe.configure({ mode: 'serial' })
 
+test.beforeEach(async ({ page }) => {
+  watchSearches(page)
+})
+
 test.afterEach(async ({ page }) => {
-  const started = new URL(page.url()).searchParams.get('search')
-  if (started) await page.request.delete(`/api/searches/${started}`).catch(() => undefined)
+  await dropSearch(page)
 })
 
 async function startSearch(page: Page) {

@@ -15,7 +15,7 @@ import {
 
 describe('key factory', () => {
   it('returns the same key for the same inputs', () => {
-    expect(searchResultsKey('7', 'cursor-a')).toEqual(searchResultsKey('7', 'cursor-a'))
+    expect(searchResultsKey('7', '-bytes')).toEqual(searchResultsKey('7', '-bytes'))
     expect(sensorsKey()).toEqual(sensorsKey())
   })
 
@@ -25,7 +25,7 @@ describe('key factory', () => {
 
   it('separates different inputs', () => {
     expect(sessionKey('72075232438042624')).not.toEqual(sessionKey('72075232438042625'))
-    expect(searchResultsKey('7', 'page-1')).not.toEqual(searchResultsKey('7', 'page-2'))
+    expect(searchResultsKey('7', '-bytes')).not.toEqual(searchResultsKey('7', 'bytes'))
     expect(enumKey('protocol')).not.toEqual(enumKey('risk'))
   })
 
@@ -35,9 +35,14 @@ describe('key factory', () => {
     expect(sessionFlowKey('7')).toEqual(['session', '7', 'flow', null])
   })
 
+  it('keeps each order of one search as its own entry, so a cursor cannot cross', () => {
+    expect(searchResultsKey('7', '-ts')).not.toEqual(searchResultsKey('7', 'risk'))
+    expect(searchResultsKey('7')).not.toEqual(searchResultsKey('7', '-ts'))
+  })
+
   it('nests a result page under its search, so one invalidation drops the subtree', () => {
     const parent = searchKey('7')
-    expect(searchResultsKey('7', 'cursor-a').slice(0, parent.length)).toEqual([...parent])
+    expect(searchResultsKey('7', '-bytes').slice(0, parent.length)).toEqual([...parent])
     expect(sessionFlowKey('7', 500).slice(0, sessionKey('7').length)).toEqual([...sessionKey('7')])
   })
 

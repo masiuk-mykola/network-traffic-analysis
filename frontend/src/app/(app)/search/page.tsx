@@ -1,7 +1,9 @@
-import { zListFieldsResponse } from '@api/generated/zod.gen'
+import { ApiError } from '@api/client'
+import { zGetSearchResponse, zListFieldsResponse } from '@api/generated/zod.gen'
 import { callApi } from '@api/server'
 import type { FieldCatalogue } from '@lib/search/condition'
 import { parseQuery } from '@lib/search/query-params'
+import { EXPIRED, MISSING, type Search, type SearchStatus } from '@lib/search/search-state'
 
 import { QueryForm } from './query-form'
 
@@ -14,6 +16,8 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
   }
 
   const fields = await readFields()
+  const query = parseQuery(params, undefined, fields)
+  const initialStatus = await readSearch(query.searchId)
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
@@ -24,9 +28,31 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
         </p>
       </div>
 
-      <QueryForm initial={parseQuery(params, undefined, fields)} fields={fields} />
+      <QueryForm initial={query} fields={fields} initialStatus={initialStatus} />
     </main>
   )
+}
+
+/**
+ * A shared address names a job that may be finished, discarded, or nobody's. Reading it here means
+ * the browser inherits the answer instead of asking for it — and a job that is not there is denied
+ * once, on the server, rather than by every copy of the screen React mounts.
+ */
+async function readSearch(searchId: string | null): Promise<SearchStatus | undefined> {
+  if (!searchId) return undefined
+
+  try {
+    const { data } = await callApi({
+      path: `/v1/searches/${encodeURIComponent(searchId)}`,
+      schema: zGetSearchResponse,
+    })
+    return data as Search
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return MISSING
+    if (error instanceof ApiError && error.status === 410) return EXPIRED
+    // Anything else is the client's problem to report, with its retry.
+    return undefined
+  }
 }
 
 /**

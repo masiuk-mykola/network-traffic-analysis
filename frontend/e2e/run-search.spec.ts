@@ -1,14 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { dropSearch, watchSearches } from './search-flow'
+
 const ANALYST = { email: 'ana@quillmere.example', password: 'demo-analyst' }
 
 // An account has three search slots. These tests take them, so they run one at a time and give
 // each one back — otherwise a later test is refused for want of a slot rather than for a bug.
 test.describe.configure({ mode: 'serial' })
 
+test.beforeEach(async ({ page }) => {
+  watchSearches(page)
+})
+
 test.afterEach(async ({ page }) => {
-  const started = new URL(page.url()).searchParams.get('search')
-  if (started) await page.request.delete(`/api/searches/${started}`).catch(() => undefined)
+  await dropSearch(page)
 })
 
 async function signIn(page: Page) {
@@ -51,6 +56,8 @@ test('pressing twice starts one job, not two', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Search progress' })).toBeVisible({
     timeout: 15_000,
   })
+  // The job reaches the address through the router, which lands a tick after the screen does.
+  await expect(page).toHaveURL(/search=srch_/, { timeout: 15_000 })
   const first = new URL(page.url()).searchParams.get('search')
 
   // Nothing changed, so this is the same search — sending it again would be an identical body

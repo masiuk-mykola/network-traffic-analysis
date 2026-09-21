@@ -8,8 +8,9 @@ import { EMPTY_QUERY } from '@lib/search/query-params'
 import { QueryForm } from './query-form'
 
 const replace = vi.fn()
+const push = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace, refresh: vi.fn() }),
+  useRouter: () => ({ replace, push, refresh: vi.fn() }),
 }))
 
 const SENSORS = {
@@ -53,6 +54,9 @@ function renderForm(response: () => Promise<Response>) {
 
 beforeEach(() => {
   replace.mockClear()
+  push.mockClear()
+  // The form only writes to the address while it is the screen the address names.
+  window.history.replaceState(null, '', '/search')
 })
 
 afterEach(() => {
@@ -110,6 +114,7 @@ describe('QueryForm', () => {
     await waitFor(() => expect(window.location.search).toContain('sensor=hq-core'))
     // Going through the router would re-render the page on the server for every change.
     expect(replace).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
   })
 
   it('refuses a window that ends before it starts', async () => {

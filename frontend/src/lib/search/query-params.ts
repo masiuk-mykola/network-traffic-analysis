@@ -1,5 +1,6 @@
 import { conditionsToParams, parseConditions } from './condition-params'
 import { describeCondition, type ConditionRow, type FieldCatalogue, type Join } from './condition'
+import { DEFAULT_SORT, parseSortKey, type SortKey } from './sort'
 
 /** The API refuses a search that names more capture points than this. */
 export const MAX_SENSORS = 5
@@ -12,6 +13,8 @@ export type QueryState = {
   join: Join
   /** The job this screen started, so a reload returns to it rather than to an empty form. */
   searchId: string | null
+  /** The order the results are read in. The server sorts, and only once the job has finished. */
+  sort: SortKey
 }
 
 export const EMPTY_QUERY: QueryState = {
@@ -21,6 +24,7 @@ export const EMPTY_QUERY: QueryState = {
   conditions: [],
   join: 'all',
   searchId: null,
+  sort: DEFAULT_SORT,
 }
 
 /**
@@ -46,6 +50,7 @@ export function parseQuery(
     conditions: parseConditions(params, fields),
     join: params.get('join') === 'any' ? 'any' : 'all',
     searchId: parseSearchId(params.get('search')),
+    sort: parseSortKey(params.get('sort')) ?? DEFAULT_SORT,
   }
 }
 
@@ -59,6 +64,7 @@ export function toQueryString(state: QueryState): string {
   for (const condition of conditionsToParams(state.conditions)) params.append('f', condition)
   if (state.join === 'any' && state.conditions.length > 1) params.set('join', 'any')
   if (state.searchId) params.set('search', state.searchId)
+  if (state.sort !== DEFAULT_SORT) params.set('sort', state.sort)
   return params.toString()
 }
 
