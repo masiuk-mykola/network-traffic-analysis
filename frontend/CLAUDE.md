@@ -114,6 +114,10 @@ read the `http-discipline` skill; the short version:
   generated from the session's duration and always inside the range the server accepts (100 ms to
   60 s), so a refused width is impossible; the width is part of the cache identity and the metric
   (bytes or packets) is not, because it changes nothing about what was asked for.
+- The list of related sessions keeps its window in the cache identity for the same reason the results
+  table keeps its order: a cursor belongs to the window it was issued for. Only the three windows the
+  server names are ever offered, the list claims no reason for the relationship because the server
+  publishes none, and a 404 there is stated rather than retried — the session itself may be gone.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.

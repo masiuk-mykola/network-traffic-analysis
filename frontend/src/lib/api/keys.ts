@@ -35,4 +35,8 @@ export const sessionKey = (sessionId: string) => ['session', sessionId] as const
 export const sessionFlowKey = (sessionId: string, bucketMs?: number) =>
   ['session', sessionId, 'flow', bucketMs ?? null] as const
 
+/** The window is part of the identity: a cursor issued for one window is invalid in another. */
+export const sessionRelatedKey = (sessionId: string, window?: string) =>
+  ['session', sessionId, 'related', window ?? null] as const
+
 export const protocolSchemaKey = (protocol: string) => ['protocol-schema', protocol] as const

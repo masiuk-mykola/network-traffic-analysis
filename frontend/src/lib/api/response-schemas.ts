@@ -10,6 +10,7 @@ import {
   zGetSearchResultsResponse,
   zGetSessionFlowResponse,
   zGetSessionResponse,
+  zListRelatedSessionsResponse,
   zListFieldsResponse,
   zListSensorsResponse,
 } from './generated/zod.gen'
@@ -49,6 +50,7 @@ const ROUTES: ReadonlyArray<readonly [RegExp, ZodType]> = [
   [/^\/v1\/searches\/[^/]+\/results$/, zGetSearchResultsResponse],
   [/^\/v1\/searches\/[^/]+$/, zGetSearchResponse],
   [/^\/v1\/sessions\/[^/]+\/flow$/, zGetSessionFlowResponse],
+  [/^\/v1\/sessions\/[^/]+\/related$/, zListRelatedSessionsResponse],
   [/^\/v1\/sessions\/[^/]+$/, zGetSessionResponse],
 ]
 

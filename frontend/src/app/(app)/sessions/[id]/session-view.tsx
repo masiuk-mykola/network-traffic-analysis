@@ -16,6 +16,7 @@ import { Button } from '@/components/ui'
 
 import { DnsExchange } from './dns-exchange'
 import { FlowTimeline } from './flow-timeline'
+import { RelatedSessions } from './related-sessions'
 import { SessionSummary } from './session-summary'
 import { Transaction } from './transaction'
 
@@ -71,6 +72,8 @@ export function SessionView({
       {dns ? <DnsExchange exchange={dns} risk={found.risk} detections={found.detections} /> : null}
 
       <FlowTimeline sessionId={found.id} durationMs={found.duration_ms} />
+
+      <RelatedSessions sessionId={found.id} />
 
       <Transaction
         decoded={found.decoded}

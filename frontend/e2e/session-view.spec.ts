@@ -71,10 +71,10 @@ test('a DNS session reads as an exchange, and asks for nothing extra', async ({ 
   // The exchange is read out of the session the screen already has: the browser asks only for the
   // description of the protocol and for the traffic over time.
   await page.waitForTimeout(2_000)
-  const extra = asked.filter((path) => !path.includes('meta/schema') && !path.includes('/flow'))
-  expect(extra).toEqual([])
-  // The session itself is never re-read in the browser: the page handed it over.
-  expect(asked.filter((path) => path.includes('/sessions/') && !path.includes('/flow'))).toEqual([])
+  // The session itself is never re-read in the browser: the page handed it over. Its traffic and
+  // its neighbours are the only session-scoped reads the screen makes.
+  const sessionReads = asked.filter((path) => path.includes('/sessions/'))
+  expect(sessionReads.filter((path) => !/\/(flow|related)$/.test(path))).toEqual([])
 })
 
 test('the traffic of a session is on a timeline, at widths the server accepts', async ({
@@ -114,6 +114,49 @@ test('the traffic of a session is on a timeline, at widths the server accepts', 
     expect(Number(width)).toBeLessThanOrEqual(60_000)
   }
   expect(refused).toEqual([])
+})
+
+test('a session lists what is around it, at windows the server accepts', async ({ page }) => {
+  await signIn(page)
+  await startSearch(page)
+  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+
+  const windows: string[] = []
+  const refused: number[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.includes('/related')) windows.push(url.searchParams.get('window') ?? '')
+  })
+  page.on('response', (response) => {
+    if (response.url().includes('/related') && response.status() >= 400) {
+      refused.push(response.status())
+    }
+  })
+
+  await page.getByRole('row').nth(1).click()
+
+  const related = page.getByRole('region', { name: 'Related sessions' })
+  await expect(related).toBeVisible({ timeout: 15_000 })
+  await expect(
+    related.getByRole('link').first().or(related.getByText('Nothing else in this window')),
+  ).toBeVisible({ timeout: 15_000 })
+
+  await related.getByRole('button', { name: '6 hours' }).click()
+  await page.waitForTimeout(1_000)
+
+  for (const window of windows) expect(['15m', '1h', '6h']).toContain(window)
+  expect(refused).toEqual([])
+
+  // An entry leads to exactly the session it names — the id is a uint64 string, never a number.
+  const first = related.getByRole('link').first()
+  if (await first.isVisible()) {
+    const href = await first.getAttribute('href')
+    await first.click()
+    await expect(page).toHaveURL(new RegExp(`${href}$`))
+    await expect(page.getByRole('region', { name: 'Session summary' })).toBeVisible({
+      timeout: 15_000,
+    })
+  }
 })
 
 test('an address naming no session says so, and asks the server once', async ({ page }) => {

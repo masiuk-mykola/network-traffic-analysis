@@ -11,6 +11,7 @@ import {
   sensorsKey,
   sessionFlowKey,
   sessionKey,
+  sessionRelatedKey,
 } from './keys'
 
 describe('key factory', () => {
@@ -38,6 +39,14 @@ describe('key factory', () => {
   it('keeps each order of one search as its own entry, so a cursor cannot cross', () => {
     expect(searchResultsKey('7', '-ts')).not.toEqual(searchResultsKey('7', 'risk'))
     expect(searchResultsKey('7')).not.toEqual(searchResultsKey('7', '-ts'))
+  })
+
+  it('keeps each window of a session’s neighbours apart, and under the session', () => {
+    expect(sessionRelatedKey('7', '15m')).not.toEqual(sessionRelatedKey('7', '6h'))
+    expect(sessionRelatedKey('7', '1h').slice(0, sessionKey('7').length)).toEqual([
+      ...sessionKey('7'),
+    ])
+    expect(sessionRelatedKey('7')).toEqual(['session', '7', 'related', null])
   })
 
   it('nests a result page under its search, so one invalidation drops the subtree', () => {

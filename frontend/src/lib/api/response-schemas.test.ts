@@ -46,6 +46,16 @@ describe('schemaForPath', () => {
     expect(schemaForPath('/v1/meta/columns')?.safeParse(body).success).toBe(false)
   })
 
+  it('tells a session apart from its flow and its neighbours', () => {
+    const session = schemaForPath('/v1/sessions/7')
+    const flow = schemaForPath('/v1/sessions/7/flow')
+    const related = schemaForPath('/v1/sessions/7/related')
+
+    expect(related).toBeDefined()
+    expect(related).not.toBe(session)
+    expect(related).not.toBe(flow)
+  })
+
   it('leaves an unmapped path unvalidated rather than guessing', () => {
     expect(schemaForPath('/v1/hunts')).toBeUndefined()
     expect(schemaForPath('/v1/sessions/7/pcap')).toBeUndefined()
