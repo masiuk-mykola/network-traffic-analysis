@@ -109,6 +109,11 @@ read the `http-discipline` skill; the short version:
   reconciled in one reader (`@lib/session/dns`), which is also where a bare response code is named —
   screens never see two shapes. What is anomalous is what the server says is anomalous: its risk
   reasons and rules, in its words; the interface adds no judgement of its own.
+- The traffic timeline places each bucket at its own moment, never at its index: the server omits a
+  bucket in which nothing happened, so a quiet stretch has to read as quiet. Bucket widths are
+  generated from the session's duration and always inside the range the server accepts (100 ms to
+  60 s), so a refused width is impossible; the width is part of the cache identity and the metric
+  (bytes or packets) is not, because it changes nothing about what was asked for.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.

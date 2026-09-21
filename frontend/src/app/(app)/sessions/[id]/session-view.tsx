@@ -15,6 +15,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Button } from '@/components/ui'
 
 import { DnsExchange } from './dns-exchange'
+import { FlowTimeline } from './flow-timeline'
 import { SessionSummary } from './session-summary'
 import { Transaction } from './transaction'
 
@@ -68,6 +69,8 @@ export function SessionView({
       <SessionSummary session={found} />
 
       {dns ? <DnsExchange exchange={dns} risk={found.risk} detections={found.detections} /> : null}
+
+      <FlowTimeline sessionId={found.id} durationMs={found.duration_ms} />
 
       <Transaction
         decoded={found.decoded}

@@ -64,13 +64,56 @@ test('a DNS session reads as an exchange, and asks for nothing extra', async ({ 
   await expect(exchange).toContainText('Question')
   await expect(exchange).toContainText('Response')
   await expect(page.getByRole('button', { name: 'Copy name' })).toBeVisible()
-  // The generic view stays, so nothing decoded is hidden by the layout.
-  await expect(page.getByRole('region', { name: 'Not described by the schema' })).toBeVisible()
+  // The generic view stays, so nothing decoded is hidden by the layout. (Whether anything is left
+  // undescribed depends on the session; the generic list itself is always there.)
+  await expect(page.getByRole('region', { name: 'Transaction' })).toBeVisible({ timeout: 15_000 })
 
-  // The exchange is read out of the session the screen already has: the only reads are the session
-  // itself and the description of its protocol.
+  // The exchange is read out of the session the screen already has: the browser asks only for the
+  // description of the protocol and for the traffic over time.
   await page.waitForTimeout(2_000)
-  expect(asked.filter((path) => !path.includes('meta/schema')).sort()).toEqual([])
+  const extra = asked.filter((path) => !path.includes('meta/schema') && !path.includes('/flow'))
+  expect(extra).toEqual([])
+  // The session itself is never re-read in the browser: the page handed it over.
+  expect(asked.filter((path) => path.includes('/sessions/') && !path.includes('/flow'))).toEqual([])
+})
+
+test('the traffic of a session is on a timeline, at widths the server accepts', async ({
+  page,
+}) => {
+  await signIn(page)
+  await startSearch(page)
+  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+
+  const widths: string[] = []
+  const refused: number[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.includes('/flow')) widths.push(url.searchParams.get('bucket_ms') ?? '')
+  })
+  page.on('response', (response) => {
+    if (response.url().includes('/flow') && response.status() >= 400)
+      refused.push(response.status())
+  })
+
+  await page.getByRole('row').nth(1).click()
+
+  const timeline = page.getByRole('region', { name: 'Traffic over time' })
+  await expect(timeline).toBeVisible({ timeout: 15_000 })
+  await expect(
+    timeline.getByText(/in buckets of|no shape to plot|No traffic was recorded/),
+  ).toBeVisible({ timeout: 15_000 })
+
+  // Switching what is measured is free; only a different width is read again.
+  const asked = widths.length
+  await timeline.getByRole('button', { name: 'packets' }).click()
+  await page.waitForTimeout(1_000)
+  expect(widths).toHaveLength(asked)
+
+  for (const width of widths) {
+    expect(Number(width)).toBeGreaterThanOrEqual(100)
+    expect(Number(width)).toBeLessThanOrEqual(60_000)
+  }
+  expect(refused).toEqual([])
 })
 
 test('an address naming no session says so, and asks the server once', async ({ page }) => {
