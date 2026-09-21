@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { HttpError } from '@api/http-error'
 import { EmptyState, ErrorState, LoadingState, Skeleton } from '@/components/states'
+import { Button } from '@/components/ui'
 import { useToast } from '@/components/toast/use-toast'
 
 type Sample = { id: string; label: string; body: Record<string, unknown>; init: ResponseInit }
@@ -71,9 +72,9 @@ export function StatesGallery() {
           title="No sessions match"
           description="Widen the time window or drop a condition."
           action={
-            <button type="button" className="border-border rounded border px-3 py-1.5 text-sm">
+            <Button variant="secondary" size="sm">
               Clear filters
-            </button>
+            </Button>
           }
         />
       </section>
@@ -93,13 +94,14 @@ export function StatesGallery() {
 
       <p data-testid="retry-count">retries: {retries}</p>
 
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-fit"
         onClick={() => notify({ title: 'Search cancelled', detail: 'The slot is free again.' })}
-        className="border-border w-fit rounded border px-3 py-1.5 text-sm"
       >
         Show a toast
-      </button>
+      </Button>
     </div>
   )
 }

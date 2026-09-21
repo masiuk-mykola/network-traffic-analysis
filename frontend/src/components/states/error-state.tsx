@@ -1,9 +1,11 @@
 'use client'
 
 import { AlertTriangle, LogIn, ShieldAlert } from 'lucide-react'
-import { useEffect, useState, type ReactElement } from 'react'
+import { type ReactElement } from 'react'
 
 import { describeFailure } from '@api/failure'
+import { Button } from '@/components/ui'
+import { useCountdown } from '@lib/use-countdown'
 import { cn } from '@lib/utils'
 
 type ErrorStateProps = {
@@ -13,8 +15,6 @@ type ErrorStateProps = {
   variant?: 'page' | 'region'
   className?: string
 }
-
-const SECOND_MS = 1000
 
 export function ErrorState({ error, onRetry, variant = 'region', className }: ErrorStateProps) {
   const failure = describeFailure(error)
@@ -48,32 +48,10 @@ function RetryButton({ waitMs, onRetry }: { waitMs: number | null; onRetry: () =
   const waitSeconds = useCountdown(waitMs)
 
   return (
-    <button
-      type="button"
-      onClick={onRetry}
-      disabled={waitSeconds > 0}
-      className="border-border hover:bg-border rounded border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-    >
+    <Button variant="secondary" size="sm" onClick={onRetry} disabled={waitSeconds > 0}>
       {waitSeconds > 0 ? `Try again in ${waitSeconds} s` : 'Try again'}
-    </button>
+    </Button>
   )
-}
-
-/** Counts the server-advertised wait down to zero, so the button cannot repeat a refused request. */
-function useCountdown(waitMs: number | null): number {
-  const [remaining, setRemaining] = useState(() =>
-    waitMs !== null && waitMs > 0 ? Math.ceil(waitMs / SECOND_MS) : 0,
-  )
-
-  useEffect(() => {
-    if (remaining <= 0) return
-    const timer = setInterval(() => {
-      setRemaining((seconds) => (seconds <= 1 ? 0 : seconds - 1))
-    }, SECOND_MS)
-    return () => clearInterval(timer)
-  }, [remaining])
-
-  return remaining
 }
 
 function failureIcon(code: string | null, retryable: boolean): ReactElement {

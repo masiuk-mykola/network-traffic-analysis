@@ -17,7 +17,16 @@ type Entry = {
 
 const REFRESH_SKEW_MS = 5_000
 
-const sessions = new Map<string, Entry>()
+/**
+ * Route handlers and server components are compiled into separate bundles, so a module-level Map
+ * would exist twice and a session created in one would be invisible to the other. One instance on
+ * globalThis keeps them looking at the same sessions (and survives a dev-server hot reload).
+ */
+const globalForSessions = globalThis as typeof globalThis & {
+  __captureSessions?: Map<string, Entry>
+}
+
+const sessions = (globalForSessions.__captureSessions ??= new Map<string, Entry>())
 
 export function putSession(id: string, pair: TokenPair): void {
   sessions.set(id, {
