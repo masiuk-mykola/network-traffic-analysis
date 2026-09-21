@@ -13,6 +13,9 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 }
 
+// jsdom does not scroll, which Radix's select does when it opens.
+Element.prototype.scrollIntoView ??= () => undefined
+
 // jsdom has no Pointer Capture; Radix calls it while dismissing a toast.
 Element.prototype.hasPointerCapture ??= () => false
 Element.prototype.setPointerCapture ??= () => undefined

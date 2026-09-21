@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseQuery, toQueryString, MAX_SENSORS } from './query-params'
+import { EMPTY_QUERY, parseQuery, toQueryString, MAX_SENSORS } from './query-params'
 
 const READABLE = ['hq-core', 'dc-east', 'harbor-branch']
 const WINDOW = { from: '2025-10-27T06:00:00.000Z', to: '2025-10-27T12:00:00.000Z' }
@@ -43,18 +43,18 @@ describe('parseQuery', () => {
   })
 
   it('survives an empty query', () => {
-    expect(parse('')).toEqual({ sensorIds: [], from: null, to: null })
+    expect(parse('')).toEqual(EMPTY_QUERY)
   })
 })
 
 describe('toQueryString', () => {
   it('writes what it read', () => {
-    const state = { sensorIds: ['hq-core', 'dc-east'], ...WINDOW }
+    const state = { ...EMPTY_QUERY, sensorIds: ['hq-core', 'dc-east'], ...WINDOW }
 
     expect(parse(toQueryString(state))).toEqual(state)
   })
 
   it('leaves out what is not set', () => {
-    expect(toQueryString({ sensorIds: [], from: null, to: null })).toBe('')
+    expect(toQueryString(EMPTY_QUERY)).toBe('')
   })
 })

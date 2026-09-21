@@ -101,17 +101,15 @@ describe('QueryForm', () => {
     expect(to).toHaveValue('2025-10-27T12:00')
   })
 
-  it('mirrors the choices into the address bar', async () => {
+  it('mirrors the choices into the address bar without a round trip', async () => {
     renderForm(async () => Response.json(SENSORS, { status: 200 }))
     await screen.findByText('HQ Core')
 
     await userEvent.click(screen.getAllByRole('checkbox')[0]!)
 
-    await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith(expect.stringContaining('sensor=hq-core'), {
-        scroll: false,
-      }),
-    )
+    await waitFor(() => expect(window.location.search).toContain('sensor=hq-core'))
+    // Going through the router would re-render the page on the server for every change.
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('refuses a window that ends before it starts', async () => {

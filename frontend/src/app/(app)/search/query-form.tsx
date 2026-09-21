@@ -1,22 +1,35 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 import { formatTimestamp } from '@lib/format'
+import {
+  describeCondition,
+  type ConditionRow,
+  type FieldCatalogue,
+  type Join,
+} from '@lib/search/condition'
 import { MAX_SENSORS, toQueryString, type QueryState } from '@lib/search/query-params'
+import { useFields } from '@lib/search/use-fields'
 import { useSensors } from '@lib/search/use-sensors'
 import { defaultWindow } from '@lib/search/window'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Field } from '@/components/form/field'
 import { Button, Input } from '@/components/ui'
 
+import { ConditionBuilder } from './condition-builder'
 import { SensorOption } from './sensor-option'
 
 /** The form keeps the choices locally and mirrors them into the address bar as they change. */
-export function QueryForm({ initial }: { initial: QueryState }) {
-  const router = useRouter()
+export function QueryForm({
+  initial,
+  fields: initialFields,
+}: {
+  initial: QueryState
+  fields?: FieldCatalogue
+}) {
   const sensors = useSensors()
+  const fields = useFields(initialFields)
   const [state, setState] = useState<QueryState>(initial)
 
   const items = useMemo(() => sensors.data?.items ?? [], [sensors.data])
@@ -31,9 +44,15 @@ export function QueryForm({ initial }: { initial: QueryState }) {
   }, [state, items])
 
   useEffect(() => {
+    // The query is client state; the address bar only has to reflect it for a reload or a shared
+    // link. Going through the router would re-render the page on the server for every keystroke —
+    // and each of those renders reads the field catalogue again.
     const search = toQueryString(query)
-    router.replace(search ? `/search?${search}` : '/search', { scroll: false })
-  }, [query, router])
+    const next = search ? `/search?${search}` : '/search'
+    if (`${window.location.pathname}${window.location.search}` !== next) {
+      window.history.replaceState(null, '', next)
+    }
+  }, [query])
 
   if (sensors.isPending) return <LoadingState label="Loading capture points" />
   if (sensors.isError) {
@@ -49,7 +68,7 @@ export function QueryForm({ initial }: { initial: QueryState }) {
   }
 
   const atLimit = query.sensorIds.length >= MAX_SENSORS
-  const problem = describeProblem(query)
+  const problem = describeProblem(query, fields.data ?? {})
 
   return (
     <form
@@ -119,6 +138,18 @@ export function QueryForm({ initial }: { initial: QueryState }) {
         </p>
       ) : null}
 
+      <ConditionBuilder
+        fields={fields.data ?? {}}
+        isPending={fields.isPending}
+        error={fields.isError ? fields.error : null}
+        onRetry={() => void fields.refetch()}
+        rows={query.conditions}
+        join={query.join}
+        onChange={(conditions: ConditionRow[], join: Join) =>
+          setState({ ...query, conditions, join })
+        }
+      />
+
       {problem ? (
         <p role="alert" className="text-danger text-sm">
           {problem}
@@ -132,11 +163,17 @@ export function QueryForm({ initial }: { initial: QueryState }) {
   )
 }
 
-function describeProblem(state: QueryState): string | null {
+function describeProblem(state: QueryState, fields: FieldCatalogue): string | null {
   if (state.sensorIds.length === 0) return 'Choose at least one capture point.'
   if (state.sensorIds.length > MAX_SENSORS) return `Choose no more than ${MAX_SENSORS}.`
   if (!state.from || !state.to) return 'Choose a time window.'
   if (Date.parse(state.from) >= Date.parse(state.to)) return 'The window ends before it starts.'
+
+  for (const row of state.conditions) {
+    const unfinished = describeCondition(row, fields[row.field])
+    if (unfinished) return `A condition is unfinished: ${unfinished.toLowerCase()}`
+  }
+
   return null
 }
 

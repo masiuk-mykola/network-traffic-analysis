@@ -69,6 +69,9 @@ read the `http-discipline` skill; the short version:
   a 401 redirects — an unreachable API reaches the error boundary instead.
 - A session that dies mid-use is handled once, centrally: every browser read reports through
   `@lib/auth/session-expiry`, which cancels, clears, explains and leaves. No screen checks for it.
+- Conditions are a flat list joined by all-or-any, each one negatable, built only from the fields
+  the server publishes and the comparisons each field declares. They travel in the API's own
+  `f=field:op:v1,v2` form, which `/v1/estimate` also accepts.
 - The search query lives in the address bar: `@lib/search/query-params` parses it defensively (a
   shared link can name points this account cannot read) and the form mirrors changes back with
   `router.replace`.

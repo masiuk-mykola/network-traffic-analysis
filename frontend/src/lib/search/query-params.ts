@@ -1,3 +1,6 @@
+import { conditionsToParams, parseConditions } from './condition-params'
+import type { ConditionRow, FieldCatalogue, Join } from './condition'
+
 /** The API refuses a search that names more capture points than this. */
 export const MAX_SENSORS = 5
 
@@ -5,16 +8,28 @@ export type QueryState = {
   sensorIds: string[]
   from: string | null
   to: string | null
+  conditions: ConditionRow[]
+  join: Join
 }
 
-export const EMPTY_QUERY: QueryState = { sensorIds: [], from: null, to: null }
+export const EMPTY_QUERY: QueryState = {
+  sensorIds: [],
+  from: null,
+  to: null,
+  conditions: [],
+  join: 'all',
+}
 
 /**
  * The query lives in the address bar, which means it arrives from strangers: a shared link can name
  * points this account cannot read, repeat them, carry more than the API accepts, or hold a window
  * that runs backwards. Nothing here throws — anything unusable is simply dropped.
  */
-export function parseQuery(params: URLSearchParams, readable?: readonly string[]): QueryState {
+export function parseQuery(
+  params: URLSearchParams,
+  readable?: readonly string[],
+  fields: FieldCatalogue = {},
+): QueryState {
   const named = params.getAll('sensor').flatMap((value) => value.split(','))
   const allowed = readable ? new Set(readable) : null
 
@@ -22,7 +37,12 @@ export function parseQuery(params: URLSearchParams, readable?: readonly string[]
     .filter((id) => !allowed || allowed.has(id))
     .slice(0, MAX_SENSORS)
 
-  return { sensorIds, ...parseWindow(params.get('from'), params.get('to')) }
+  return {
+    sensorIds,
+    ...parseWindow(params.get('from'), params.get('to')),
+    conditions: parseConditions(params, fields),
+    join: params.get('join') === 'any' ? 'any' : 'all',
+  }
 }
 
 export function toQueryString(state: QueryState): string {
@@ -32,6 +52,8 @@ export function toQueryString(state: QueryState): string {
     params.set('from', state.from)
     params.set('to', state.to)
   }
+  for (const condition of conditionsToParams(state.conditions)) params.append('f', condition)
+  if (state.join === 'any' && state.conditions.length > 1) params.set('join', 'any')
   return params.toString()
 }
 
