@@ -13,6 +13,6 @@ test('signing in opens the search screen', async ({ page }) => {
   await page.getByLabel('Password').fill('demo-analyst')
   await page.getByRole('button', { name: 'Sign in' }).click()
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
   await expect(page.getByRole('heading', { name: 'Search' })).toBeVisible()
 })

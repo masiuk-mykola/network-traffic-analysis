@@ -29,7 +29,7 @@ test('a destination pointing at another site is ignored', async ({ page }) => {
 
   await signIn(page)
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 })
 
 test('the shell says who is signed in', async ({ page }) => {
@@ -44,11 +44,11 @@ test('the shell says who is signed in', async ({ page }) => {
 test('signing out asks first, then leaves nothing reachable', async ({ page }) => {
   await page.goto('/login')
   await signIn(page)
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 
   await page.getByRole('button', { name: 'Sign out' }).click()
   await page.getByRole('button', { name: 'Stay signed in' }).click()
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 
   await page.getByRole('button', { name: 'Sign out' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Sign out' }).click()

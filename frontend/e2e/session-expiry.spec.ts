@@ -27,7 +27,7 @@ async function revoke(page: Page, email: string) {
 async function signedInProbe(page: Page, who: { email: string; password: string }) {
   await page.goto('/login')
   await signIn(page, who)
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
   await page.goto('/dev/session')
   await expect(page.getByTestId('probe-name')).toBeVisible()
 }

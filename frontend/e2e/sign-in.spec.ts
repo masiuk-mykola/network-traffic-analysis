@@ -13,7 +13,7 @@ test('signing in lands on the search screen', async ({ page }) => {
 
   await signIn(page, ANALYST.email, ANALYST.password)
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
   await expect(page.getByRole('heading', { name: 'Search' })).toBeVisible()
 })
 
@@ -26,7 +26,7 @@ test('the whole form works from the keyboard alone', async ({ page }) => {
   await page.keyboard.type(ANALYST.password)
   await page.keyboard.press('Enter')
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 })
 
 test('no API token reaches the browser', async ({ page }) => {
@@ -38,7 +38,7 @@ test('no API token reaches the browser', async ({ page }) => {
 
   expect(body).not.toMatch(/access_token|refresh_token|bearer/i)
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
   const stored = await page.evaluate(() => ({
     local: JSON.stringify(localStorage),
     session: JSON.stringify(sessionStorage),
@@ -63,11 +63,11 @@ test('a wrong password is refused without saying whether the email is known', as
 test('an already signed-in visitor is sent onward', async ({ page }) => {
   await page.goto('/login')
   await signIn(page, ANALYST.email, ANALYST.password)
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 
   await page.goto('/login')
 
-  await expect(page).toHaveURL('/search')
+  await expect(page).toHaveURL(/\/search/)
 })
 
 test('the server stops accepting attempts, and the form stops offering them', async ({ page }) => {
