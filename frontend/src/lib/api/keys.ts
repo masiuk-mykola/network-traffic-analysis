@@ -42,3 +42,9 @@ export const sessionRelatedKey = (sessionId: string, window?: string) =>
   ['session', sessionId, 'related', window ?? null] as const
 
 export const protocolSchemaKey = (protocol: string) => ['protocol-schema', protocol] as const
+
+/**
+ * The newest page of detections, which seeds the live feed. The feed itself is pushed rather than
+ * queried, so this key names the seed only — it is never re-read on a tick.
+ */
+export const detectionsKey = () => ['detections'] as const

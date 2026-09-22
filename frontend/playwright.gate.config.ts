@@ -3,14 +3,15 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * The traffic generator, which is not part of the suite.
  *
- * `npm run test:e2e` collects `*.spec.ts` only, so `e2e/retry-after-gate.ts` is invisible to it by
- * name alone — this config exists to run that one file deliberately, and nothing else. It takes the
- * account's search slots and drives minutes of refused reads, so it must never run beside the
- * suite: the limits it exhausts are per account, not per browser.
+ * `npm run test:e2e` collects `*.spec.ts` only, so the `*-gate.ts` files are invisible to it by name
+ * alone — this config exists to run them deliberately, one at a time. They drive minutes of traffic
+ * under a chaos profile and take the account's search slots, so they must never run beside the
+ * suite: the limits they exhaust are per account, not per browser.
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'retry-after-gate.ts',
+  // Every gate, and only the gates: `npm run test:e2e` collects `*.spec.ts` and never sees these.
+  testMatch: /.*-gate\.ts$/,
   // Minutes of traffic under a profile that adds up to 1.5 s of latency to every read.
   timeout: 15 * 60_000,
   fullyParallel: false,

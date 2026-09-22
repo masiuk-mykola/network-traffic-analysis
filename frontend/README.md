@@ -195,6 +195,43 @@ cd backend && uv run capture-api report --since 900
 does not end the run before enough traffic has accumulated. It takes the account's search slots, so
 it runs alone — never beside `npm run test:e2e`.
 
+### The live detection feed
+
+The first of the optional items is done: detections arrive on their own screen as the capture points
+raise them, each leading to the session it names. It brings three graded checks of its own, and they
+decided its shape.
+
+The API grades stream opens **per token family**, and two browser tabs are one family — so a
+connection owned by the browser would fail `sse.double_open` the moment a second tab appeared. The
+connection therefore lives once on our server, keyed by session (`src/lib/detections/upstream.ts`),
+and every tab reads from it through an endpoint of our own. A browser reconnecting to _us_ is not a
+request the API ever sees.
+
+The rest follows from what the server actually does: it ends the stream on a schedule (300 s calm,
+**20 s storm**), it ends it with a `reauth` event when the token it opened with expires, and it
+replays a ring of the last thousand detections to whoever resumes. So re-opening is the ordinary
+path, not the error path — every re-open carries a resume point, and none follows an ending by less
+than the second the API allows (`src/lib/detections/reconnect.ts`). Signing out ends the stream
+before the session is dropped.
+
+One thing worth stating, because it cost a debugging round: a delay the server advertises cannot
+protect a read that is _already in flight_. Under storm the API can hold a request for a second and
+a half, so a second mount of the feed issues its read before the first one's refusal comes back.
+The fix is not more memory but fewer reads — the feed's seed is rationed by its own handler and
+shares the read in flight, exactly as the field catalogue and the server's own condition are.
+
+Because the check needs a family that re-opened, it cannot be proved inside the deterministic suite:
+
+```bash
+cd backend && uv run capture-api admin reset
+cd frontend && npm run gate:detection-resume     # GATE_PROFILE=storm|expiring-tokens
+cd backend && uv run capture-api report --all
+```
+
+Three consecutive storm runs report `sse.double_open`, `sse.reconnect_backoff` and `sse.resume`
+(100 %) passing, with 0 fail overall; under `expiring-tokens` the feed comes back under fresh
+credentials with refresh still single-flight.
+
 ## What was broken in what was given
 
 The task invites this, so: four things, two of which stopped the backend from starting as shipped.

@@ -8,6 +8,7 @@
 export const ROUTES = {
   signIn: '/login',
   search: '/search',
+  detections: '/detections',
   /** A session id is a uint64 as a string; it goes into the address exactly as it arrived. */
   session: (id: string) => `/sessions/${id}`,
 } as const
