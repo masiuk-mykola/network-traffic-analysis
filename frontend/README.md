@@ -114,9 +114,17 @@ slow at the sizes this capture produces, and no profiler number is claimed.
 
 ```bash
 npm run test                      # 422 unit tests in 58 files
+npm run test:coverage             # the same, plus coverage; HTML in coverage/
 npm run test:e2e                  # 71 end-to-end tests in 16 files, against a live API
 npm run format:check && npm run lint && npm run typecheck && npm run build
 ```
+
+Coverage is reported for the code this repository owns — the generated API client and the dev-only
+state gallery are excluded, because counting them moves the number without saying anything about the
+tests. Only `src/lib` is held to a threshold (88 % of statements, 85 % of branches, 92 % of
+functions, 90 % of lines), and CI fails below it. The rest of `src` is deliberately not held to one:
+route handlers and server components read as zero here because the end-to-end suite covers them and
+Vitest cannot see it, so a number over all of `src` would demand unit tests where they prove little.
 
 The unit tests cover the places where being wrong is silent: cursor and window handling, the
 condition grammar and its form in the address, the retry policy, the redaction marker, both decoder
