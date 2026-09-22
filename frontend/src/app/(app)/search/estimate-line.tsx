@@ -9,10 +9,20 @@ import { ErrorState } from '@/components/states'
  * flight the old number is removed rather than dimmed: a number from the previous query is worse
  * than no number at all.
  */
-export function EstimateLine({ params }: { params: URLSearchParams | null }) {
+export function EstimateLine({
+  params,
+  gap,
+}: {
+  params: URLSearchParams | null
+  /** Why no estimate was asked for, when the reason is worth saying. */
+  gap?: string | null
+}) {
   const estimate = useEstimate(params)
 
-  if (params === null) return null
+  if (params === null) {
+    // An unfinished query needs no explanation; a query this endpoint cannot express does.
+    return gap ? <p className="text-muted text-sm">{gap}</p> : null
+  }
 
   if (estimate.isError) {
     return <ErrorState error={estimate.error} className="min-h-0 py-2 text-left" />

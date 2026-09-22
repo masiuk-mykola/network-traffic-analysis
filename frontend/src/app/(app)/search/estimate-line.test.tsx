@@ -87,4 +87,35 @@ describe('EstimateLine', () => {
     expect(alert).toHaveTextContent('Too many requests')
     expect(alert.querySelector('button')).toBeNull()
   })
+
+  it('says why a query it cannot ask about has no estimate, and asks nothing', async () => {
+    const asked: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        asked.push(String(input))
+        return Response.json({ estimated_matches: 0, estimated_sessions_scanned: 0 })
+      }),
+    )
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <EstimateLine params={null} gap="No estimate for conditions joined with any — run it." />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText(/joined with any/i)).toBeVisible()
+    expect(asked).toEqual([])
+  })
+
+  it('explains nothing about a query that is merely unfinished', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <EstimateLine params={null} />
+      </QueryClientProvider>,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
 })

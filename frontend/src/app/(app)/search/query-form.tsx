@@ -11,7 +11,7 @@ import {
   toQueryString,
   type QueryState,
 } from '@lib/search/query-params'
-import { toEstimateParams } from '@lib/search/estimate-params'
+import { describeEstimateGap, toEstimateParams } from '@lib/search/estimate-params'
 import { useFields } from '@lib/search/use-fields'
 import { useSearch } from '@lib/search/use-search'
 import type { SearchStatus } from '@lib/search/search-state'
@@ -60,6 +60,7 @@ export function QueryForm({
   // Both hooks run before any early return, or their order would change between renders.
   const settled = useDebounced(query, ESTIMATE_DELAY_MS)
   const estimateParams = toEstimateParams(settled, fields.data ?? {})
+  const estimateGap = describeEstimateGap(settled)
   const running = useSearch(query.searchId, { searchId: initial.searchId, status: initialStatus })
 
   const landmark = `${query.searchId ?? ''}|${query.sort}`
@@ -162,7 +163,7 @@ export function QueryForm({
       ) : null}
 
       <div className="space-y-3">
-        <EstimateLine params={estimateParams} />
+        <EstimateLine params={estimateParams} gap={estimateGap} />
         <RunControl
           query={query}
           fields={fields.data ?? {}}

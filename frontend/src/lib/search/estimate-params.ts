@@ -13,6 +13,7 @@ export function toEstimateParams(
 ): URLSearchParams | null {
   if (describeQuery(state, fields) !== null) return null
   if (!state.from || !state.to) return null
+  if (describeEstimateGap(state) !== null) return null
 
   const params = new URLSearchParams()
   params.set('from', state.from)
@@ -21,4 +22,19 @@ export function toEstimateParams(
   for (const condition of conditionsToParams(state.conditions)) params.append('f', condition)
 
   return params
+}
+
+/**
+ * Why this query cannot be estimated, when the reason is worth saying.
+ *
+ * The endpoint takes repeated filters and ANDs them; it has no join. An any-joined pair would
+ * therefore be estimated as the conjunction — "source is X and destination is X", which matches
+ * nothing — and the screen would report a confident zero for a query the search answers with
+ * hundreds. Better to ask nothing and say why.
+ */
+export function describeEstimateGap(state: QueryState): string | null {
+  if (state.join !== 'any') return null
+  if (conditionsToParams(state.conditions).length < 2) return null
+
+  return 'No estimate for conditions joined with any — the estimate can only be asked about all of them at once. Run the search to see the size.'
 }
