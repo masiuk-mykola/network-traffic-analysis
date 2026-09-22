@@ -6,7 +6,7 @@ import { fetchJson } from '@api/fetch-json'
 import { isHttpError } from '@api/http-error'
 import { searchKey } from '@api/keys'
 
-import { nextPollDelay } from './poll-interval'
+import { pollDelay } from './poll-interval'
 import { EXPIRED, isRunning, MISSING, type Search, type SearchStatus } from './search-state'
 
 /** What the page already knows about the job its address names, and which job that was. */
@@ -41,8 +41,13 @@ export function useSearch(searchId: string | null, initial?: InitialStatus) {
     refetchInterval: ({ state }) => {
       const status = state.data
       if (!status || !isRunning(status)) return false
-      // One successful read has already happened by now, so the first wait is the shortest.
-      return nextPollDelay(state.dataUpdateCount - 1)
+      // One successful read has already happened by now, so the first wait is the shortest. A
+      // refusal that arrived between two ticks can still be asking us to wait longer than that.
+      const error = state.error
+      const advertised = isHttpError(error)
+        ? { retryAfterMs: error.retryAfterMs, elapsedMs: Date.now() - state.errorUpdatedAt }
+        : undefined
+      return pollDelay(state.dataUpdateCount - 1, advertised)
     },
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,

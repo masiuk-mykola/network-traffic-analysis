@@ -89,7 +89,14 @@ The main screen. A search is a server-side job: create it, follow it, read it pa
 | 4.3 | ✅ done | Results are a `grid` with one tab stop and arrow/Home/End movement; focus follows the roving index only when a key moved it. `e2e/a11y.spec.ts` runs axe-core at WCAG 2.1 AA over the three screens and fails on any violation; it found an unnamed progress bar, now named.                   |
 | 4.4 | ✅ done | The visible columns and the flattened pages are stable across renders, and rows and header cells are memoised. Nothing measured as slow, so no profiler number is claimed — the memoisation is a correctness fix, not a win.                                                                   |
 
-- **Gate:** `capture-api report` shows no FAIL under `calm`, `storm` and `expiring-tokens`; `capture-api doctor` clean.
+- **Gate:** run after `capture-api admin reset`, because the report accumulates across runs.
+  `calm` — 0 fail ✅. `expiring-tokens` — 0 fail ✅. `doctor` — clean ✅.
+  `storm` — **one check still fails intermittently** (`http.retry_after_violations`, on the search
+  status read). Two causes were found and fixed: the poll interval ignored a `Retry-After` that
+  arrived between ticks (`pollDelay`), and `holdRead` remembered answers but not refusals — the
+  field catalogue is now rationed by its own handler so the server render and the browser share one
+  memory of a refusal. A third case survives and could not be isolated: under a fifth of GETs
+  refused, the specs fail before producing enough traffic to reproduce it on demand.
 
 ---
 
@@ -122,7 +129,12 @@ One finished thing beats five started ones. Each item brings its own scored chec
 - **E2E (Playwright):** sign in / sign out, search → results → session, the empty state, cancelling a search, a dead session redirecting to `/login`.
 - **Backend verdict:** `capture-api report` after every phase that touches the data layer.
 
-## Open questions (answer before the phase starts)
+## Open questions (all settled; kept for the record)
+
+Answered in the order they came up: a flat condition list (2.2), our own windowing with TanStack
+Virtual (2.6), DNS as the first-class protocol (3.2), the flow timeline and related sessions kept in
+phase 3 rather than moved to 6 (3.3/3.4), and no separate affordances for the observer beyond marking
+a withheld value as withheld (1.2). The questions as they were first written:
 
 1. **Phase 2.2** — how much of the condition builder do we want: flat `all` conditions only, or full `any`/`not` nesting? Flat is faster and covers the task; nesting is the honest read of `/v1/meta/fields`.
 2. **Phase 2.6** — do we window the table ourselves (TanStack Virtual) or cap the page size? Windowing is the right answer at a hundred thousand sessions, and it is extra work.

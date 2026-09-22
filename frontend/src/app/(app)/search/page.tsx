@@ -43,9 +43,15 @@ async function readSearch(searchId: string | null): Promise<SearchStatus | undef
   if (!searchId) return undefined
 
   try {
-    const { data } = await callApi({
-      path: `/v1/searches/${encodeURIComponent(searchId)}`,
-      schema: zGetSearchResponse,
+    // Held with no window, so a running job's state is never reused — but a refusal that named a
+    // delay is remembered. The browser polls this same job, and without that memory a navigation
+    // landing inside the advertised delay would ask again on the server, which the API counts.
+    const data = await holdRead(`searches/${searchId}`, 0, async () => {
+      const answer = await callApi({
+        path: `/v1/searches/${encodeURIComponent(searchId)}`,
+        schema: zGetSearchResponse,
+      })
+      return answer.data
     })
     return data as Search
   } catch (error) {
@@ -65,10 +71,13 @@ async function readFields(): Promise<FieldCatalogue> {
     // Held for a minute: the catalogue changes with a deploy, and a render that happens twice would
     // otherwise ask twice — which the API counts, and which turns a refusal with a delay attached
     // into a violation of a delay this page never saw.
-    return await holdRead('meta/fields', 60_000, async () => {
-      const { data } = await callApi({ path: '/v1/meta/fields', schema: zListFieldsResponse })
-      return Object.fromEntries(data.items.map((field) => [field.name, field]))
+    // The hold keeps the server's own answer, under the same key the rationed route handler uses,
+    // so whichever of the two asks first spares the other — including when the answer is a refusal.
+    const data = await holdRead('meta/fields', 60_000, async () => {
+      const answer = await callApi({ path: '/v1/meta/fields', schema: zListFieldsResponse })
+      return answer.data
     })
+    return Object.fromEntries(data.items.map((field) => [field.name, field]))
   } catch {
     // The form shows the failure and offers a retry; the page itself still renders.
     return {}

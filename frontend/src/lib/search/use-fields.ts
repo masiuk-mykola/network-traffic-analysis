@@ -16,7 +16,9 @@ export function useFields(initial?: FieldCatalogue) {
 
   return useQuery({
     queryKey: fieldsKey(),
-    queryFn: ({ signal }) => fetchJson<FieldList>('meta/fields', { signal }),
+    // Rationed by its own handler rather than passed through the proxy: this read and the search
+    // page's server-side one share a hold, so neither repeats the other's ask or its refusal.
+    queryFn: ({ signal }) => fetchJson<FieldList>('fields', { signal }),
     staleTime: 30 * 60_000,
     initialData: seeded ? { items: Object.values(seeded) } : undefined,
     select: (data): FieldCatalogue =>

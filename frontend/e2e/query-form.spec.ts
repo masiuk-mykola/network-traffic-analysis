@@ -30,8 +30,21 @@ test('a point that is behind says so, and says how far', async ({ page }) => {
 test('the suggested window lands on traffic that exists', async ({ page }) => {
   await signIn(page)
 
-  // The capture ends in 2025; a window built from today would return nothing.
-  await expect(page.getByLabel('To (UTC)')).toHaveValue(/^2025-10-27T/)
+  // The capture ends in the past, so a window built from the clock would return nothing. The end
+  // is whatever the points last reported — read here rather than pinned to a date, because the
+  // simulator walks that moment forward and a hardcoded day stops being true overnight.
+  const answer = await page.request.get('/api/capture/sensors')
+  expect(answer.ok()).toBe(true)
+  const { items } = (await answer.json()) as { items: Array<{ last_packet_at?: string }> }
+  const latest = items
+    .map((sensor) => sensor.last_packet_at)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1)
+
+  expect(latest).toBeDefined()
+  // The control holds seconds; the API reports milliseconds.
+  await expect(page.getByLabel('To (UTC)')).toHaveValue(latest!.slice(0, 19))
   await expect(page.getByText(/this capture ends at/i)).toBeVisible()
 })
 
