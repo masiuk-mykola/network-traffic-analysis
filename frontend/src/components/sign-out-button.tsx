@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { ROUTES } from '@lib/routes'
 import { Button } from '@/components/ui'
 
 export function SignOutButton() {
@@ -24,7 +25,7 @@ export function SignOutButton() {
       queryClient.clear()
       setPending(false)
       setOpen(false)
-      router.replace('/login')
+      router.replace(ROUTES.signIn)
       router.refresh()
     }
   }

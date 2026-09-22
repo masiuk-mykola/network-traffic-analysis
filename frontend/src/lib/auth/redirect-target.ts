@@ -1,6 +1,4 @@
-export const DEFAULT_TARGET = '/search'
-
-const SIGN_IN = '/login'
+import { DEFAULT_TARGET, ROUTES } from '@lib/routes'
 
 /**
  * The destination carried through sign-in arrives from the URL, so it is attacker-controlled: it
@@ -15,7 +13,7 @@ export function safeRedirectTarget(value: string | null | undefined): string {
   // `//host` and `/\host` are both ways of leaving the site.
   if (decoded.startsWith('//') || decoded.startsWith('/\\')) return DEFAULT_TARGET
   if (decoded.includes('\\')) return DEFAULT_TARGET
-  if (decoded.startsWith(SIGN_IN)) return DEFAULT_TARGET
+  if (decoded.startsWith(ROUTES.signIn)) return DEFAULT_TARGET
 
   return decoded
 }

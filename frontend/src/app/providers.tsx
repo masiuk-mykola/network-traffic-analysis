@@ -8,10 +8,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { safeRedirectTarget } from '@lib/auth/redirect-target'
 import { createExpiryHandler, reportFailure, setExpiryHandler } from '@lib/auth/session-expiry'
 import { retry, retryDelay } from '@lib/query-retry'
+import { ROUTES } from '@lib/routes'
 import { ToastProvider } from '@/components/toast/toast-provider'
 import { useToast } from '@/components/toast/use-toast'
-
-const SIGN_IN = '/login'
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -65,7 +64,7 @@ function QueryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handler = createExpiryHandler({
-      isSignedOut: () => window.location.pathname.startsWith(SIGN_IN),
+      isSignedOut: () => window.location.pathname.startsWith(ROUTES.signIn),
       onExpired: () => {
         // Order matters: stop everything before leaving. A request that lands after the server
         // revoked the session is counted against us, and the window is five seconds.
@@ -77,7 +76,7 @@ function QueryProvider({ children }: { children: ReactNode }) {
           detail: 'Sign in again to pick up where you left off.',
         })
         const next = safeRedirectTarget(window.location.pathname + window.location.search)
-        router.replace(`${SIGN_IN}?next=${encodeURIComponent(next)}`)
+        router.replace(`${ROUTES.signIn}?next=${encodeURIComponent(next)}`)
       },
     })
 

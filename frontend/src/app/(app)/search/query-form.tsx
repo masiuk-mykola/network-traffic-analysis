@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { formatTimestamp } from '@lib/format'
+import { ROUTES } from '@lib/routes'
 import { type ConditionRow, type FieldCatalogue, type Join } from '@lib/search/condition'
 import {
   describeQuery,
@@ -70,10 +71,10 @@ export function QueryForm({
     // The query is client state; the address bar only has to reflect it for a reload or a shared
     // link. A form left mounted by a navigation away from this screen must not rewrite the address
     // of the screen that replaced it.
-    if (window.location.pathname !== '/search') return
+    if (window.location.pathname !== ROUTES.search) return
 
     const search = toQueryString(query)
-    const next = search ? `/search?${search}` : '/search'
+    const next = search ? `${ROUTES.search}?${search}` : ROUTES.search
     if (`${window.location.pathname}${window.location.search}` !== next) {
       // Starting a search or changing its order is a place worth coming back to, and only the
       // router can create an entry it will restore with these parameters — an entry written

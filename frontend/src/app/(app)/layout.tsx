@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 
 import { requireProfile } from '@lib/auth/session'
+import { ROUTES } from '@lib/routes'
 import { AppHeader } from '@/components/app-header'
 import { ServerNotice } from '@/components/server-notice'
 
@@ -9,7 +10,7 @@ import { ServerNotice } from '@/components/server-notice'
  * content is produced. Pages below this do not check again.
  */
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
-  const destination = (await headers()).get('x-pathname') ?? '/search'
+  const destination = (await headers()).get('x-pathname') ?? ROUTES.search
   const profile = await requireProfile(destination)
 
   return (

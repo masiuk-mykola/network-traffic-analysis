@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import { HttpError } from '@api/http-error'
 
-import { DEFAULT_TARGET } from './redirect-target'
+import { DEFAULT_TARGET } from '@lib/routes'
 import type { Credentials } from './credentials'
 
 /**

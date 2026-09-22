@@ -1,5 +1,6 @@
 import type { components } from '@api/schema'
 import { formatByteCount, formatTimestamp } from '@lib/format'
+import { ROUTES } from '@lib/routes'
 
 export type RelatedRow = components['schemas']['SessionRow']
 export type RelatedWindow = components['schemas']['RelatedWindow']
@@ -28,7 +29,7 @@ export type RelatedLine = {
 export function describeRelated(row: RelatedRow): RelatedLine {
   return {
     // The id is a uint64 as a string: it goes into the address exactly as it arrived.
-    href: `/sessions/${row.id}`,
+    href: ROUTES.session(row.id),
     when: formatTimestamp(row.start),
     protocol: row.protocol,
     from: endpoint(row.src),

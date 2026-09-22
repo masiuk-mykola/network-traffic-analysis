@@ -16,6 +16,7 @@ import {
 
 import type { components } from '@api/schema'
 import { formatCount } from '@lib/format'
+import { ROUTES } from '@lib/routes'
 import { rowValue } from '@lib/search/row-value'
 import { isGone, isRunning, type SearchStatus } from '@lib/search/search-state'
 import { directionOf, sortFieldFor, toggleSort, type SortKey } from '@lib/search/sort'
@@ -333,7 +334,7 @@ const Row = memo(function Row({
       aria-rowindex={index + 1}
       data-row-index={index}
       tabIndex={focused ? 0 : -1}
-      href={`/sessions/${row.id}`}
+      href={ROUTES.session(row.id)}
       className={cn(
         'border-border hover:bg-accent/5 focus-visible:ring-ring/50 absolute flex w-full border-b',
         'focus-visible:ring-2 focus-visible:outline-none',
