@@ -21,9 +21,23 @@ export async function setChaos(
   expect(response.status()).toBe(200)
 }
 
-/** Put the server back the way the rest of the suite expects to find it. */
+/**
+ * Put the server back the way the rest of the suite expects to find it, and wait until the app
+ * agrees. This app holds one health answer for half a minute, so a spec that left the server
+ * degraded would hand the next one a banner that appears late and shifts the page under its first
+ * click.
+ */
 export async function calmDown(page: Page) {
   await setChaos(page, 'calm')
+
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    const response = await page.request.get('/api/capture/health').catch(() => null)
+    if (response?.ok()) {
+      const body = (await response.json()) as { status?: string }
+      if (body.status === 'ok') return
+    }
+    await page.waitForTimeout(1_000)
+  }
 }
 
 /** An account has three search slots, and a suite of specs can find them all taken for a while. */

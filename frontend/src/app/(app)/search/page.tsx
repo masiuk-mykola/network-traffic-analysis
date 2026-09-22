@@ -1,5 +1,6 @@
 import { ApiError } from '@api/client'
 import { zGetSearchResponse, zListFieldsResponse } from '@api/generated/zod.gen'
+import { holdRead } from '@api/hold'
 import { callApi } from '@api/server'
 import type { FieldCatalogue } from '@lib/search/condition'
 import { parseQuery } from '@lib/search/query-params'
@@ -61,8 +62,13 @@ async function readSearch(searchId: string | null): Promise<SearchStatus | undef
  */
 async function readFields(): Promise<FieldCatalogue> {
   try {
-    const { data } = await callApi({ path: '/v1/meta/fields', schema: zListFieldsResponse })
-    return Object.fromEntries(data.items.map((field) => [field.name, field]))
+    // Held for a minute: the catalogue changes with a deploy, and a render that happens twice would
+    // otherwise ask twice — which the API counts, and which turns a refusal with a delay attached
+    // into a violation of a delay this page never saw.
+    return await holdRead('meta/fields', 60_000, async () => {
+      const { data } = await callApi({ path: '/v1/meta/fields', schema: zListFieldsResponse })
+      return Object.fromEntries(data.items.map((field) => [field.name, field]))
+    })
   } catch {
     // The form shows the failure and offers a retry; the page itself still renders.
     return {}

@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 
 import { requireProfile } from '@lib/auth/session'
 import { AppHeader } from '@/components/app-header'
+import { ServerNotice } from '@/components/server-notice'
 
 /**
  * The guard for every working screen: one identity call per navigation, before any protected
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <AppHeader profile={profile} />
+      <ServerNotice />
       <div className="flex flex-1 flex-col">{children}</div>
     </div>
   )

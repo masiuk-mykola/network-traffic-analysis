@@ -17,6 +17,8 @@ export const sensorsKey = () => ['sensors'] as const
 
 export const fieldsKey = () => ['fields'] as const
 
+export const healthKey = () => ['health'] as const
+
 export const columnsKey = () => ['columns'] as const
 
 export const enumKey = (name: string) => ['enum', name] as const

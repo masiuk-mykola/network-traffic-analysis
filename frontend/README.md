@@ -62,6 +62,12 @@ reaches a screen. Writes, which are starting and deleting a search, have their o
 On the client, TanStack Query owns every read, every cache key is built in one place, and there is a
 single reaction to a session that has died: cancel everything, clear the cache, explain, and leave.
 
+Two reads are rationed rather than proxied: the field catalogue and the server's own condition. Both change on the scale of a deploy, and the
+API counts identical reads and treats one that follows a refusal too soon as a violated delay — so
+one answer is held behind a single-flight read, however many tabs, navigations and renders ask for
+it. The trade is deliberate: a part of the server going unwell, or recovering, shows up to half a
+minute late.
+
 Path aliases: `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`.
 
 ## What is done
@@ -73,14 +79,13 @@ estimate of the size. Starting a search with an idempotency label derived from t
 following it with a backoff that pauses in a hidden tab, cancelling it, and freeing its slot. A
 virtualised results table built from the columns the server publishes, paged by cursor, sortable
 once the job has finished. The session screen described above. And failure handling that keeps a
-refused read from taking the whole screen with it.
+refused read from taking the whole screen with it. Values the server withholds from an observer read
+as withheld rather than as the marker it sends, the list behind a closed-field condition can be
+retried or bypassed by typing, and a part of the server the server itself reports as unwell is quoted
+once above every screen.
 
 ## What is not done, and why
 
-- **The remaining empty and error paths** (roadmap 4.2): the value list behind a closed-field
-  condition has no failure state of its own, and the server's own health — it reports its session
-  index as degraded under load — is not surfaced anywhere. Specified and planned in `specs/019` and
-  `plans/019`, not built.
 - **A keyboard and focus pass** (4.3): the screens are keyboard-reachable and Radix manages focus in
   the dialogs, but there was no deliberate audit, so I will not claim one.
 - **Table performance work** (4.4): the table is virtualised and holds up at the sizes this capture
@@ -94,8 +99,8 @@ refused read from taking the whole screen with it.
 ## The tests
 
 ```bash
-npm run test                      # 395 unit tests in 54 files
-npm run test:e2e                  # 63 end-to-end tests in 14 files, against a live API
+npm run test                      # 416 unit tests in 58 files
+npm run test:e2e                  # 67 end-to-end tests in 15 files, against a live API
 npm run format:check && npm run lint && npm run typecheck && npm run build
 ```
 

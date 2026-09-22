@@ -3,7 +3,7 @@
 import type { FieldDef } from '@lib/search/condition'
 import { valueArity } from '@lib/search/condition'
 import { useEnum } from '@lib/search/use-enum'
-import { Input } from '@/components/ui'
+import { Button, Input } from '@/components/ui'
 import { Select } from '@/components/form/select'
 
 type ValueInputProps = {
@@ -23,6 +23,32 @@ export function ValueInput({ field, op, values, onChange }: ValueInputProps) {
   if (!field || !op || arity === 'none') return null
 
   if (field.enum_name || field.enum) {
+    // A list that cannot be read must not block the condition: the value is typed instead, and the
+    // list can be asked for again.
+    if (!field.enum && closed.isError) {
+      return (
+        <div className="flex-1 space-y-1">
+          <Input
+            aria-label="Value"
+            value={values[0] ?? ''}
+            placeholder={field.example}
+            onChange={(event) => onChange([event.target.value])}
+          />
+          <p className="text-muted flex items-center gap-2 text-xs">
+            The list of values could not be read. Type it, or
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={closed.isFetching}
+              onClick={() => void closed.refetch()}
+            >
+              {closed.isFetching ? 'Trying again' : 'Try again'}
+            </Button>
+          </p>
+        </div>
+      )
+    }
+
     const options = field.enum
       ? field.enum.map((value) => ({ value, label: value }))
       : (closed.data?.values.map((entry) => ({ value: entry.value, label: entry.label })) ?? [])

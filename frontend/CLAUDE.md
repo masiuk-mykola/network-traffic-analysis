@@ -118,6 +118,13 @@ read the `http-discipline` skill; the short version:
   table keeps its order: a cursor belongs to the window it was issued for. Only the three windows the
   server names are ever offered, the list claims no reason for the relationship because the server
   publishes none, and a 404 there is stated rather than retried — the session itself may be gone.
+- A value the server withheld for the reader's role is recognised by its shape, never by a word, and
+  is rendered as withheld rather than printed. The walk over undescribed values stops at the marker:
+  descending into it would print the marker's own field and lose the explanation.
+- The server's own condition is read through a handler that rations it (`/api/capture/health`): one
+  answer is held for half a minute and the read in flight is shared, because the API grades the gap
+  between health reads and every tab, navigation and mount would otherwise ask again. The cost of
+  that is deliberate — a change of condition surfaces up to half a minute late.
 - Import aliases (declared once in `tsconfig.json`, picked up by Next, Vitest and Playwright):
   `@api/*` → `src/lib/api/*`, `@lib/*` → `src/lib/*`, `@/*` → `src/*`. Use them across folders;
   keep relative imports only inside the same folder.
