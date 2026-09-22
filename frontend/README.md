@@ -38,7 +38,9 @@ Sign in with the demo accounts the sign-in screen lists: `ana@quillmere.example`
 (an analyst) or `oli@quillmere.example` / `demo-observer` (an observer, who sees sensitive values
 withheld).
 
-## The three screens
+## The screens
+
+The task asks for three; the fourth is the one optional protocol that is done.
 
 - **Sign in** — email and password. The token stays on the server; the browser gets an opaque
   session cookie.
@@ -49,6 +51,7 @@ withheld).
 - **Session** — one session in full: a summary, the decoded transaction built from the server's own
   description of that protocol, a first-class layout for DNS, a timeline of its traffic, and the
   sessions the server relates to it.
+- **Detections** — the live feed, newest first, each row leading to the session it names.
 
 ## How it is arranged
 
@@ -105,17 +108,18 @@ slow at the sizes this capture produces, and no profiler number is claimed.
 
 ## What is not done, and why
 
-- **The optional protocols** (phase 6): the live detection feed over SSE, WebSocket, PCAP and carved
-  file downloads, saved queries, IP enrichment. Each switches on more of the backend's scored checks
-  and none is needed for the three screens the task asks for.
+- **The rest of the optional protocols** (phase 6): WebSocket, PCAP and carved file downloads,
+  saved queries, IP enrichment. Each switches on more of the backend's scored checks and none is
+  needed for the three screens the task asks for. The live detection feed is the one that is
+  done — see below.
 - **Deployment**: nothing is deployed anywhere; the task did not ask for it.
 
 ## The tests
 
 ```bash
-npm run test                      # 422 unit tests in 58 files
+npm run test                      # the unit and integration suite
 npm run test:coverage             # the same, plus coverage; HTML in coverage/
-npm run test:e2e                  # 71 end-to-end tests in 16 files, against a live API
+npm run test:e2e                  # the Playwright end-to-end suite, against a live API
 npm run format:check && npm run lint && npm run typecheck && npm run build
 ```
 
@@ -319,57 +323,42 @@ number that is not true.
 
 ## AI disclosure
 
-This was built with **Claude Code** (Anthropic) as a pair-programmer. No other AI tool was used. How
-it was used is part of the work: the agentic setup is committed to this repository in
-[`.claude/`](.claude) so it can be inspected, and every step of the work is in `specs/` and `plans/`.
+This was built with **Claude Code** (Anthropic) as a pair programmer. No other AI tool was used.
 
-It was built with two practices, deliberately, and they are visible in the repository rather than
-merely claimed:
+**How it was used.** Nothing was written before it was specified. Each step began with a spec —
+what and why, with acceptance criteria written as `current: NO → expected: YES` — and then a plan:
+real file paths, ordered steps, the edge cases that could bite, and a table mapping every criterion
+to the thing that proves it. Open questions went into the spec rather than into requirements, and I
+answered them before a plan could be written. Those documents are committed in [`specs/`](specs)
+and [`plans/`](plans), numbered in pairs, in the order the work happened.
 
-- **Spec-driven development.** Nothing was written before it was specified. Each step began with a
-  spec that answers _what_ and _why_ in half a page — goals, non-goals, requirements, and acceptance
-  criteria written as `current: NO → expected: YES` — and anything unconfirmed went into **Open
-  questions** rather than into requirements. Only then came a plan that answers _how_: real file
-  paths, ordered steps, the races and edge cases that could bite, and a table mapping every
-  acceptance criterion to the thing that proves it. The 21 specs in [`specs/`](specs) and the 22
-  plans in [`plans/`](plans) are those documents, numbered in pairs, in the order the work happened.
-- **AI agentic engineering.** The agent works inside a harness I set up rather than from a chat
-  prompt: rules that are always in force ([`.claude/rules`](.claude/rules)), slash commands for the
-  pipeline ([`.claude/commands`](.claude/commands) — `/spec`, `/plan`, `/implement`, `/code-review`),
-  sub-agents for the jobs a single pass does badly ([`.claude/agents`](.claude/agents) — an
-  architect, a planner, a code reviewer, a plan verifier), skills that encode this project's own
-  conventions and the HTTP discipline the backend scores ([`.claude/skills`](.claude/skills)), and
-  hooks that enforce the boundaries mechanically ([`.claude/hooks`](.claude/hooks)): git writes
-  denied, dangerous shell commands denied, files holding secrets unreadable, and the formatter and
-  the related tests run after every edit.
+The agent worked inside a harness rather than from a chat prompt, and it is committed in
+[`.claude/`](.claude) so it can be inspected: rules that are always in force, slash commands for the
+pipeline (`/spec`, `/plan`, `/implement`, `/code-review`), sub-agents for the jobs a single pass
+does badly, skills holding this project's conventions and the HTTP discipline the backend scores,
+and hooks that enforce the boundaries mechanically — git writes denied, files holding secrets
+unreadable, and the formatter and related tests run after every edit.
 
-Open questions were answered by me, one at a time, before a plan could be written — which is why the
-specs carry proposals and the plans carry decisions. Where the answer changed the design, the plan
-says so.
+**What I decided.** The engineering process above, and the product: timestamps in UTC everywhere;
+the default window derived from the last traffic rather than from the clock; the query, the job and
+the sort order in the address; the idempotency label derived from the query; polling from half a
+second to five, paused in a hidden tab; sorting offered only once a search has finished; withheld
+values marked field by field; and anomalies reported only in the server's own words. I also set the
+scope and cut it — the polish phase was stopped when it stopped paying, and the time moved to the
+investigation above.
 
-**What I did**
+**What I reviewed and fixed by hand.** I sent the first pass at the design back as unusable (a run
+control that looked like an input, no hover states), rejected comments written in the wrong language
+and in the wrong quantity, caught the CI failure, and read every diff. The data layer got the most
+attention, because it is where being wrong is silent: refresh discipline, duplicate reads, cursor
+handling and the advertised-delay seam described above were each traced and corrected against the
+backend's own report rather than against a passing test.
 
-- **Set the engineering process** described above, and carried it over from my previous project:
-  research before code, behaviour as test statements, unknowns surfaced instead of guessed, and a
-  hard boundary that keeps the agent out of git — every commit in this history is mine.
-- **Made the product decisions.** Timestamps in UTC everywhere; the default window derived from the
-  last traffic rather than from the clock; the query, the job and the sort order in the address; the
-  idempotency label derived from the query; polling from half a second to five, paused in a hidden
-  tab; sorting offered only once a search has finished; the flow timeline on one shared scale with
-  the two directions mirrored; the related list's window kept local to the screen; withheld values
-  marked field by field; and anomalies reported only in the server's own words.
-- **Set the scope, and cut it.** I stopped the polish phase when it stopped paying — the keyboard
-  pass and the performance pass were dropped on purpose — and moved the remaining time to the
-  investigation and this file, which is what the task actually asks for.
-- **Reviewed and corrected.** I sent the first pass at the design back as unusable (a run control
-  that looked like an input, no hover states anywhere), rejected comments written in the wrong
-  language and in the wrong quantity, caught the CI failure, and read the diffs.
-
-**What Claude Code did:** wrote the specs and plans from those decisions, implemented the code and
+**What Claude Code did.** Wrote the specs and plans from those decisions, implemented the code and
 the tests test-first, drove the real screens to find the compromised machine, and reported its own
-failures honestly — including the estimate defect above, which it found while investigating rather
-than while testing.
+failures — including the estimate defect above, which it found while investigating rather than while
+testing.
 
-**Why this is worth saying:** the interesting part was not generating code. It was the process around
-it — gates the work has to pass, unknowns it has to surface instead of inventing, and a human
-decision behind every trade-off.
+Every command in **The tests** above was run and its output read before this was submitted, along
+with `capture-api report`, which grades the client from the server's side. The result is reviewed
+work, not generated output taken on trust.

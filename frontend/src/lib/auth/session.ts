@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 
 import { ApiError } from '@api/client'
 import type { components } from '@api/schema'
@@ -24,16 +25,27 @@ export async function requireProfile(destination: string): Promise<Profile> {
   if (!sessionId) redirect(signInUrl(destination))
 
   try {
-    return await shareProfileRead(sessionId, async () => {
-      const { data } = await callApi<Profile>({ path: '/v1/me', schema: zGetMeResponse })
-      return data
-    })
+    return await readProfile(sessionId)
   } catch (error) {
     if (error instanceof SessionGone) redirect(signInUrl(destination))
     if (error instanceof ApiError && error.status === 401) redirect(signInUrl(destination))
     throw error
   }
 }
+
+/**
+ * The identity behind a session, read once per request however many server components ask for it.
+ *
+ * The guard renders in the layout and the screen below it renders in the same pass, so both want
+ * the profile: `shareProfileRead` only shares a read still in flight, and the API counts a repeat
+ * that arrives after the first has settled.
+ */
+const readProfile = cache((sessionId: string): Promise<Profile> =>
+  shareProfileRead(sessionId, async () => {
+    const { data } = await callApi<Profile>({ path: '/v1/me', schema: zGetMeResponse })
+    return data
+  }),
+)
 
 function signInUrl(destination: string): string {
   return `/login?next=${encodeURIComponent(destination)}`

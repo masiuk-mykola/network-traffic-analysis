@@ -11,6 +11,8 @@ type CheckboxProps = {
   disabled?: boolean
   id?: string
   className?: string
+  /** Names the element that says why the box is shut, so the reason is read out with it. */
+  'aria-describedby'?: string
 }
 
 export function Checkbox({ className, ...props }: CheckboxProps) {

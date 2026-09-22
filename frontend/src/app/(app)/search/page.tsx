@@ -2,6 +2,8 @@ import { ApiError } from '@api/client'
 import { zGetSearchResponse, zListFieldsResponse } from '@api/generated/zod.gen'
 import { holdRead } from '@api/hold'
 import { callApi } from '@api/server'
+import { requireProfile } from '@lib/auth/session'
+import { ROUTES } from '@lib/routes'
 import type { FieldCatalogue } from '@lib/search/condition'
 import { parseQuery } from '@lib/search/query-params'
 import { EXPIRED, MISSING, type Search, type SearchStatus } from '@lib/search/search-state'
@@ -16,8 +18,13 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
     }
   }
 
+  // The guard above resolved this already, so asking here costs nothing and spares the form a
+  // round trip for the one thing it cannot work out on its own: which points this account may read.
+  const profile = await requireProfile(ROUTES.search)
   const fields = await readFields()
-  const query = parseQuery(params, undefined, fields)
+  // A shared link can name a point this account cannot read. It is dropped here rather than
+  // rendered as a choice that was made, so an unreadable point never becomes an active selection.
+  const query = parseQuery(params, profile.sensor_ids, fields)
   const initialStatus = await readSearch(query.searchId)
 
   return (
@@ -29,7 +36,12 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
         </p>
       </div>
 
-      <QueryForm initial={query} fields={fields} initialStatus={initialStatus} />
+      <QueryForm
+        initial={query}
+        fields={fields}
+        readable={profile.sensor_ids}
+        initialStatus={initialStatus}
+      />
     </main>
   )
 }

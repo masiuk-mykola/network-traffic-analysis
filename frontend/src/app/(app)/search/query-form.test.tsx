@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { EMPTY_QUERY } from '@lib/search/query-params'
+import { EMPTY_QUERY, parseQuery } from '@lib/search/query-params'
 
 import { QueryForm } from './query-form'
 
@@ -42,12 +42,18 @@ const SENSORS = {
   ],
 }
 
-function renderForm(response: () => Promise<Response>) {
+/** Both points, unless a test says this account may read fewer. */
+const READABLE = ['hq-core', 'harbor-branch']
+
+function renderForm(
+  response: () => Promise<Response>,
+  { readable = READABLE, initial = EMPTY_QUERY } = {},
+) {
   vi.stubGlobal('fetch', vi.fn(response))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <QueryForm initial={EMPTY_QUERY} />
+      <QueryForm initial={initial} readable={readable} />
     </QueryClientProvider>,
   )
 }
@@ -136,4 +142,61 @@ describe('QueryForm', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('The window ends before it starts.')
   })
+  it('lets a point this account may read be chosen', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+    await screen.findByText('HQ Core')
+
+    const box = within(rowFor('HQ Core')).getByRole('checkbox')
+    expect(box).toBeEnabled()
+    await userEvent.click(box)
+
+    expect(box).toBeChecked()
+    await waitFor(() => expect(window.location.search).toContain('sensor=hq-core'))
+  })
+
+  it('shows a point this account cannot read, shut, and says why', async () => {
+    // The server publishes every point there is; only the profile says which are ours to read.
+    renderForm(async () => Response.json(SENSORS, { status: 200 }), { readable: ['hq-core'] })
+    await screen.findByText('Harbor Branch')
+
+    const row = rowFor('Harbor Branch')
+    expect(row).toHaveTextContent('No access')
+    const box = within(row).getByRole('checkbox')
+    expect(box).toBeDisabled()
+    // The reason is read out with the box rather than left to the eye alone.
+    expect(box).toHaveAccessibleDescription('No access')
+  })
+
+  it('does not let a point this account cannot read be chosen', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }), { readable: ['hq-core'] })
+    await screen.findByText('Harbor Branch')
+
+    const box = within(rowFor('Harbor Branch')).getByRole('checkbox')
+    await userEvent.click(box)
+
+    expect(box).not.toBeChecked()
+    expect(window.location.search).not.toContain('harbor-branch')
+  })
+
+  it('does not take a point from the address that this account cannot read', async () => {
+    // What the address named is filtered before it ever reaches the form, so it arrives as what it
+    // is — not a choice — and nothing here turns it back into one.
+    const fromLink = parseQuery(new URLSearchParams('sensor=harbor-branch'), ['hq-core'])
+    expect(fromLink.sensorIds).toEqual([])
+
+    renderForm(async () => Response.json(SENSORS, { status: 200 }), {
+      readable: ['hq-core'],
+      initial: fromLink,
+    })
+    await screen.findByText('Harbor Branch')
+
+    expect(within(rowFor('Harbor Branch')).getByRole('checkbox')).not.toBeChecked()
+    expect(window.location.search).not.toContain('harbor-branch')
+  })
 })
+
+function rowFor(name: string): HTMLElement {
+  const row = screen.getByText(name).closest('li')
+  if (!row) throw new Error(`no row for ${name}`)
+  return row
+}

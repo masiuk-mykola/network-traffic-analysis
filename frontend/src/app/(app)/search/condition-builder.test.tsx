@@ -76,7 +76,7 @@ function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <QueryForm initial={EMPTY_QUERY} fields={FIELDS} />
+      <QueryForm initial={EMPTY_QUERY} fields={FIELDS} readable={['hq-core', 'harbor-branch']} />
     </QueryClientProvider>,
   )
   return calls

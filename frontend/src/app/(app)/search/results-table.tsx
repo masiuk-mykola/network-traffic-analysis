@@ -231,11 +231,7 @@ export function ResultsTable({
       </div>
 
       {results.isError ? (
-        <ErrorState
-          error={results.error}
-          onRetry={() => void results.fetchNextPage()}
-          className="min-h-0 py-2"
-        />
+        <ErrorState error={results.error} onRetry={results.retry} className="min-h-0 py-2" />
       ) : null}
 
       {complete ? (

@@ -34,10 +34,16 @@ const ESTIMATE_DELAY_MS = 400
 export function QueryForm({
   initial,
   fields: initialFields,
+  readable,
   initialStatus,
 }: {
   initial: QueryState
   fields?: FieldCatalogue
+  /**
+   * The points this account may read, from its profile. The list the server publishes holds every
+   * point there is, readable or not, so this is the only thing that says which are open to us.
+   */
+  readable: readonly string[]
   /** What the page read about the job the address named, so the browser does not ask again. */
   initialStatus?: SearchStatus
 }) {
@@ -100,6 +106,7 @@ export function QueryForm({
       <SensorList
         items={items}
         chosen={query.sensorIds}
+        readable={readable}
         isPending={sensors.isPending}
         error={sensors.isError ? sensors.error : null}
         retrying={sensors.isFetching}

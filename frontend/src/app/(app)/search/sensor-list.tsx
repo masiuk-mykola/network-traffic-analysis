@@ -16,6 +16,7 @@ import { SensorOption } from './sensor-option'
 export function SensorList({
   items,
   chosen,
+  readable,
   isPending,
   error,
   retrying,
@@ -24,6 +25,8 @@ export function SensorList({
 }: {
   items: Sensor[]
   chosen: string[]
+  /** The points this account may read. Everything else is shown, but shut. */
+  readable: readonly string[]
   isPending: boolean
   error: unknown
   retrying: boolean
@@ -37,11 +40,12 @@ export function SensorList({
       <legend className="text-sm font-medium">Capture points</legend>
       <p className="text-muted text-xs">
         Between one and {MAX_SENSORS}. A point that is behind has not reported its most recent
-        traffic yet.
+        traffic yet; a locked one is not open to this account.
       </p>
       <Body
         items={items}
         chosen={chosen}
+        readable={readable}
         atLimit={atLimit}
         isPending={isPending}
         error={error}
@@ -56,6 +60,7 @@ export function SensorList({
 function Body({
   items,
   chosen,
+  readable,
   atLimit,
   isPending,
   error,
@@ -65,6 +70,7 @@ function Body({
 }: {
   items: Sensor[]
   chosen: string[]
+  readable: readonly string[]
   atLimit: boolean
   isPending: boolean
   error: unknown
@@ -93,12 +99,16 @@ function Body({
     <ul className="border-border divide-border overflow-hidden rounded-lg border">
       {items.map((sensor) => {
         const checked = chosen.includes(sensor.id)
+        // What this account may read comes from its profile, never from the list being published:
+        // the server publishes every point there is, including the ones it would refuse to search.
+        const locked = !readable.includes(sensor.id)
         return (
           <SensorOption
             key={sensor.id}
             sensor={sensor}
             checked={checked}
-            disabled={!checked && atLimit}
+            locked={locked}
+            disabled={locked || (!checked && atLimit)}
             onToggle={(next) => onToggle(sensor.id, next)}
           />
         )

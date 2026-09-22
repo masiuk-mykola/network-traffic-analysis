@@ -77,3 +77,30 @@ test('an observer sees a sensitive value withheld, not printed', async ({ page }
   await expect(main.getByText('Withheld for your role').first()).toBeVisible({ timeout: 20_000 })
   await expect(main).not.toContainText('"redacted"')
 })
+
+test('a capture point this account cannot read is shown, shut, and stays unchosen', async ({
+  page,
+}) => {
+  // The observer's profile names two of the three points the server publishes. What it may read is
+  // the profile's business; the list is the same for everyone.
+  await page.goto('/login')
+  await page.getByLabel('Email').fill('oli@quillmere.example')
+  await page.getByLabel('Password').fill('demo-observer')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page).toHaveURL(/\/search/)
+
+  const locked = page.getByRole('listitem').filter({ hasText: 'DC East' })
+  await expect(locked).toBeVisible({ timeout: 20_000 })
+  await expect(locked).toContainText('No access')
+  await expect(locked.getByRole('checkbox')).toBeDisabled()
+
+  // A readable one is still ordinary.
+  const open = page.getByRole('listitem').filter({ hasText: 'HQ Core' })
+  await expect(open.getByRole('checkbox')).toBeEnabled()
+
+  // And a link naming the point it cannot read does not turn it into a choice.
+  await page.goto('/search?sensor=dc-east')
+  await expect(locked).toBeVisible({ timeout: 20_000 })
+  await expect(locked.getByRole('checkbox')).not.toBeChecked()
+  await expect(page.getByRole('button', { name: 'Run search' })).toBeDisabled()
+})

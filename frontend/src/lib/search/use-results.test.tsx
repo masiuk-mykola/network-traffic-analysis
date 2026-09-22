@@ -28,6 +28,20 @@ function stubFetch(pages: Array<Record<string, unknown>>) {
   return urls
 }
 
+/** A stub that answers by cursor rather than by call order, so a poll can be told from a page. */
+function routeFetch(answer: (cursor: string | null, call: number) => Record<string, unknown>) {
+  const cursors: Array<string | null> = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const cursor = new URL(String(input), 'http://x').searchParams.get('cursor')
+      cursors.push(cursor)
+      return Response.json(answer(cursor, cursors.length), { status: 200 })
+    }),
+  )
+  return cursors
+}
+
 const page = (over: Record<string, unknown> = {}) => ({
   items: [ROW],
   next_cursor: null,
@@ -178,4 +192,116 @@ describe('useResults', () => {
 
     expect(urls).toHaveLength(afterRunning)
   })
+  it('polls the page the job is still filling, not the pages already read', async () => {
+    // A search appends its matches and a cursor is a position in them, so every page but the last
+    // is settled. Re-reading them would be the same answer bought again, on every tick.
+    vi.useFakeTimers()
+    const cursors = routeFetch((cursor) =>
+      cursor === 'c1'
+        ? page({ items: [{ id: 'b' }], next_cursor: null, complete: false })
+        : page({ items: [{ id: 'a' }], next_cursor: 'c1', complete: false }),
+    )
+
+    const { result } = renderHook(() => useResults('srch-1', true), { wrapper })
+    await vi.advanceTimersByTimeAsync(0)
+    await result.current.fetchNextPage()
+    await vi.advanceTimersByTimeAsync(0)
+
+    const loaded = cursors.length
+    await vi.advanceTimersByTimeAsync(6_000)
+
+    const polled = cursors.slice(loaded)
+    expect(polled.length).toBeGreaterThan(0)
+    expect(polled).not.toContain(null)
+    expect(new Set(polled)).toEqual(new Set(['c1']))
+  })
+
+  it('shows rows that arrive on a later poll, without repeating the ones already held', async () => {
+    vi.useFakeTimers()
+    routeFetch((_cursor, call) =>
+      call === 1
+        ? page({ items: [{ id: 'a' }], next_cursor: null, complete: false })
+        : page({ items: [{ id: 'a' }, { id: 'b' }], next_cursor: null, complete: false }),
+    )
+
+    const { result } = renderHook(() => useResults('srch-1', true), { wrapper })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(rowsOf(result.current)).toEqual(['a'])
+
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    expect(rowsOf(result.current)).toEqual(['a', 'b'])
+  })
+
+  it('stops asking once the search says it is complete', async () => {
+    vi.useFakeTimers()
+    const cursors = routeFetch((_cursor, call) =>
+      call === 1
+        ? page({ items: [{ id: 'a' }], next_cursor: null, complete: false })
+        : page({ items: [{ id: 'a' }, { id: 'b' }], next_cursor: null, complete: true }),
+    )
+
+    const { result } = renderHook(() => useResults('srch-1', true), { wrapper })
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    expect(result.current.data?.pages.at(-1)?.complete).toBe(true)
+    const afterComplete = cursors.length
+
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(cursors).toHaveLength(afterComplete)
+    expect(rowsOf(result.current)).toEqual(['a', 'b'])
+  })
+
+  it('does not read the tail twice for one answer it already has', async () => {
+    // Becoming the tail must not repeat the read that produced the page it stands for.
+    vi.useFakeTimers()
+    const cursors = routeFetch(() => page({ next_cursor: null, complete: false }))
+
+    renderHook(() => useResults('srch-1', true), { wrapper })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(cursors).toHaveLength(1)
+  })
+
+  it('reports a refused tail read where the rows are, and retries that read alone', async () => {
+    vi.useFakeTimers()
+    const urls: string[] = []
+    let refuse = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        urls.push(String(input))
+        if (refuse) {
+          return Response.json({ code: 'unavailable', detail: 'busy' }, { status: 503 })
+        }
+        return Response.json(page({ next_cursor: null, complete: false }), { status: 200 })
+      }),
+    )
+
+    const { result } = renderHook(() => useResults('srch-1', true), { wrapper })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(result.current.isError).toBe(false)
+
+    refuse = true
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    // The rows the table already holds stay; the failure is reported beside them.
+    expect(result.current.isError).toBe(true)
+    expect(rowsOf(result.current)).toEqual(['1'])
+
+    refuse = false
+    const before = urls.length
+    result.current.retry()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(urls.length).toBeGreaterThan(before)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(result.current.isError).toBe(false)
+  })
 })
+
+function rowsOf(results: { data?: { pages: Array<{ items: Array<{ id: string }> }> } }) {
+  return results.data?.pages.flatMap((entry) => entry.items.map((item) => item.id)) ?? []
+}
