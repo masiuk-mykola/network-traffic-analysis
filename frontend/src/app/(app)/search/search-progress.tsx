@@ -59,6 +59,7 @@ export function SearchProgress({ searchId, status, error, isPending }: SearchPro
         <div className="space-y-1">
           <div
             role="progressbar"
+            aria-label="How much of the capture has been scanned"
             aria-valuenow={Math.round(progress.percent)}
             aria-valuemin={0}
             aria-valuemax={100}

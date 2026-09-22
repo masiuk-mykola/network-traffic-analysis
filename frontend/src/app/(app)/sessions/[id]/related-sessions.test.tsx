@@ -67,7 +67,7 @@ describe('RelatedSessions', () => {
       { items: [row('72057639299711033'), row('216172827537047572')], next_cursor: null },
     ])
 
-    const list = await screen.findByRole('list')
+    const list = await screen.findByRole('table', { name: 'Related sessions' })
     const links = screen.getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/sessions/72057639299711033',
@@ -81,7 +81,7 @@ describe('RelatedSessions', () => {
 
   it('starts within an hour and re-reads when another window is chosen', async () => {
     const asked = renderList([{ items: [row('7')], next_cursor: null }])
-    await screen.findByRole('list')
+    await screen.findByRole('table', { name: 'Related sessions' })
     expect(asked[0]).toContain('window=1h')
 
     await userEvent.click(screen.getByRole('button', { name: '6 hours' }))
@@ -95,7 +95,7 @@ describe('RelatedSessions', () => {
       { items: [row('7')], next_cursor: 'more' },
       { items: [row('8')], next_cursor: null },
     ])
-    await screen.findByRole('list')
+    await screen.findByRole('table', { name: 'Related sessions' })
 
     await userEvent.click(screen.getByRole('button', { name: 'Read on' }))
 
@@ -125,7 +125,7 @@ describe('RelatedSessions', () => {
 
   it('claims no reason for the relationship', async () => {
     renderList([{ items: [row('7')], next_cursor: null }])
-    const list = await screen.findByRole('list')
+    const list = await screen.findByRole('table', { name: 'Related sessions' })
 
     expect(list.textContent).not.toMatch(/because|related by|same |reason/i)
   })

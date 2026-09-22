@@ -171,7 +171,7 @@ describe('ResultsTable', () => {
     const many = Array.from({ length: 5000 }, (_, index) => row(String(index + 1)))
     renderTable(page(many))
 
-    await screen.findByRole('table')
+    await screen.findByRole('grid')
     await waitFor(() => expect(screen.getAllByRole('row').length).toBeGreaterThan(1))
     // The header plus a window, nowhere near five thousand.
     expect(screen.getAllByRole('row').length).toBeLessThan(100)
@@ -228,7 +228,7 @@ describe('ResultsTable', () => {
   it('sorts on a column the server publishes as sortable', async () => {
     const changes: SortKey[] = []
     renderTable(page([row('1')]), finished, { onSortChange: (sort) => changes.push(sort) })
-    await screen.findByRole('table')
+    await screen.findByRole('grid')
 
     await userEvent.click(screen.getByRole('button', { name: /bytes/i }))
 
@@ -237,7 +237,7 @@ describe('ResultsTable', () => {
 
   it('marks the order in force and offers no control on the other columns', async () => {
     renderTable(page([row('1')]), finished, { sort: '-bytes' })
-    await screen.findByRole('table')
+    await screen.findByRole('grid')
 
     expect(screen.getByRole('columnheader', { name: /bytes/i })).toHaveAttribute(
       'aria-sort',
@@ -248,7 +248,7 @@ describe('ResultsTable', () => {
 
   it('refuses a different order while the job is still running, and says why', async () => {
     renderTable(page([row('1')], { complete: false }), running)
-    await screen.findByRole('table')
+    await screen.findByRole('grid')
 
     const control = screen.getByRole('button', { name: /bytes/i })
     expect(control).toBeDisabled()

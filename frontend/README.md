@@ -84,13 +84,27 @@ as withheld rather than as the marker it sends, the list behind a closed-field c
 retried or bypassed by typing, and a part of the server the server itself reports as unwell is quoted
 once above every screen.
 
+The keyboard and focus pass is done and measured rather than claimed: `e2e/a11y.spec.ts` runs
+axe-core against the three screens at WCAG 2.1 AA and fails the build on any violation. It found one
+— a progress bar with no accessible name — which is fixed. The results table is a `grid` rather than
+a `table`, because its rows are interactive: it holds one tab stop and the arrows, `Home` and `End`
+move it, so a hundred thousand rows are not a hundred thousand tab stops. Focus follows the roving
+index only when a key moved it, never on a re-render, so a table still filling behind a running
+search cannot pull focus out of the form above it.
+
+The tables are TanStack Table: the results table builds its column model from `/v1/meta/columns`, and
+the session screen's four lists — the transaction, the DNS records, the timeline's numbers and the
+related sessions — are tables too. None of the row-model features are switched on, because sorting
+and paging belong to the server and the address bar already holds the order; turning them on would
+keep a second copy of a state this app does not own.
+
+What the table hands to each row is now stable across renders (the visible columns, the flattened
+pages), and the rows and header cells are memoised — before that, every loaded row re-rendered on any
+parent change. This is a correctness fix for the memoisation rather than a measured win: nothing was
+slow at the sizes this capture produces, and no profiler number is claimed.
+
 ## What is not done, and why
 
-- **A keyboard and focus pass** (4.3): the screens are keyboard-reachable and Radix manages focus in
-  the dialogs, but there was no deliberate audit, so I will not claim one.
-- **Table performance work** (4.4): the table is virtualised and holds up at the sizes this capture
-  produces. Nothing was measured to be slow, so nothing was optimised — skipped on purpose rather
-  than unfinished.
 - **The optional protocols** (phase 6): the live detection feed over SSE, WebSocket, PCAP and carved
   file downloads, saved queries, IP enrichment. Each switches on more of the backend's scored checks
   and none is needed for the three screens the task asks for.
@@ -100,7 +114,7 @@ once above every screen.
 
 ```bash
 npm run test                      # 416 unit tests in 58 files
-npm run test:e2e                  # 67 end-to-end tests in 15 files, against a live API
+npm run test:e2e                  # 71 end-to-end tests in 16 files, against a live API
 npm run format:check && npm run lint && npm run typecheck && npm run build
 ```
 
@@ -247,8 +261,8 @@ says so.
   tab; sorting offered only once a search has finished; the flow timeline on one shared scale with
   the two directions mirrored; the related list's window kept local to the screen; withheld values
   marked field by field; and anomalies reported only in the server's own words.
-- **Set the scope, and cut it.** I stopped the polish phase when it stopped paying — the health
-  banner and the performance pass were dropped on purpose — and moved the remaining time to the
+- **Set the scope, and cut it.** I stopped the polish phase when it stopped paying — the keyboard
+  pass and the performance pass were dropped on purpose — and moved the remaining time to the
   investigation and this file, which is what the task actually asks for.
 - **Reviewed and corrected.** I sent the first pass at the design back as unusable (a run control
   that looked like an input, no hover states anywhere), rejected comments written in the wrong

@@ -9,6 +9,7 @@
   --border: #e4ded4;
   --accent: #9a5b06;
   --accent-contrast: #fffaf2;
+  --warning: #b3541e;
   --danger: #a81f1a;
   --ring: #9a5b06;
 }
@@ -21,6 +22,7 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
+  --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
@@ -36,6 +38,7 @@
     --border: #262629;
     --accent: #f0b429;
     --accent-contrast: #14110a;
+    --warning: #f0a35e;
     --danger: #f2706b;
     --ring: #f0b429;
   }

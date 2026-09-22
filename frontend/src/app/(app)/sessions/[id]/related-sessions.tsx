@@ -1,7 +1,8 @@
 'use client'
 
+import { tableFeatures, useTable, type ColumnDef as TableColumnDef } from '@tanstack/react-table'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { isHttpError } from '@api/http-error'
 import {
@@ -13,6 +14,8 @@ import {
 import { useRelated } from '@lib/session/use-related'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Button } from '@/components/ui'
+
+const features = tableFeatures({})
 
 /**
  * What else the server relates to this session, within a window around it. The server does not say
@@ -64,6 +67,63 @@ function Body({
   onRetry: () => void
   onMore: () => void
 }) {
+  // One line per session, and the line is the same four things every time. The link sits in the
+  // first cell rather than around the row: a table row cannot be a link, and wrapping every cell in
+  // one would announce the same destination four times.
+  const columns = useMemo<TableColumnDef<typeof features, RelatedRow>[]>(
+    () => [
+      {
+        id: 'when',
+        header: 'Started',
+        cell: ({ row }) => {
+          const line = describeRelated(row.original)
+          return (
+            <Link
+              href={line.href}
+              className="focus-visible:ring-ring/50 text-muted block text-xs focus-visible:ring-2 focus-visible:outline-none"
+            >
+              {line.when}
+            </Link>
+          )
+        },
+      },
+      {
+        id: 'protocol',
+        header: 'Protocol',
+        cell: ({ row }) => (
+          <span className="font-medium">{describeRelated(row.original).protocol}</span>
+        ),
+      },
+      {
+        id: 'endpoints',
+        header: 'Between',
+        cell: ({ row }) => {
+          const line = describeRelated(row.original)
+          return (
+            <span className="break-all">
+              {line.from} → {line.to}
+            </span>
+          )
+        },
+      },
+      {
+        id: 'size',
+        header: 'Size and risk',
+        cell: ({ row }) => {
+          const line = describeRelated(row.original)
+          return (
+            <span className="text-muted text-xs whitespace-nowrap">
+              {line.size} · risk {line.risk}
+            </span>
+          )
+        },
+      },
+    ],
+    [],
+  )
+
+  const table = useTable({ features, columns, data: rows })
+
   if (related.isPending) {
     return <LoadingState label="Looking around this session" className="min-h-24" />
   }
@@ -94,30 +154,33 @@ function Body({
 
   return (
     <div className="space-y-2">
-      <ul className="border-border divide-border divide-y rounded-lg border">
-        {rows.map((row) => {
-          const line = describeRelated(row)
-          return (
-            <li key={row.id}>
-              <Link
-                href={line.href}
-                className="hover:bg-accent/5 focus-visible:ring-ring/50 block px-3 py-2 focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-                  <span className="text-muted text-xs">{line.when}</span>
-                  <span className="font-medium">{line.protocol}</span>
-                  <span className="break-all">
-                    {line.from} → {line.to}
-                  </span>
-                  <span className="text-muted ml-auto text-xs">
-                    {line.size} · risk {line.risk}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      <table
+        aria-label="Related sessions"
+        className="border-border w-full rounded-lg border text-sm"
+      >
+        <thead className="sr-only">
+          {table.getHeaderGroups().map((group) => (
+            <tr key={group.id}>
+              {group.headers.map((header) => (
+                <th key={header.id} scope="col">
+                  <table.FlexRender header={header} />
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="divide-border divide-y">
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="hover:bg-accent/5">
+              {row.getAllCells().map((cell) => (
+                <td key={cell.id} className="px-3 py-2">
+                  <table.FlexRender cell={cell} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       {related.hasNextPage ? (
         <Button

@@ -16,7 +16,7 @@ test.afterEach(async ({ page }) => {
 test('a row opens the session it names, and the session says what it is', async ({ page }) => {
   await signIn(page)
   await startSearch(page)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 
   const row = page.getByRole('row').nth(1)
   const href = await row.getAttribute('href')
@@ -33,7 +33,7 @@ test('a row opens the session it names, and the session says what it is', async 
 test('the transaction is labelled the way the server describes it', async ({ page }) => {
   await signIn(page)
   await startSearch(page)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 
   // A DNS session is the one whose description is richest, so look for one in the loaded rows.
   const dnsRow = page.getByRole('row').filter({ hasText: 'dns' }).first()
@@ -48,7 +48,7 @@ test('the transaction is labelled the way the server describes it', async ({ pag
 test('a DNS session reads as an exchange, and asks for nothing extra', async ({ page }) => {
   await signIn(page)
   await startSearch(page)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 
   const dnsRow = page.getByRole('row').filter({ hasText: 'dns' }).first()
   await expect(dnsRow).toBeVisible({ timeout: 20_000 })
@@ -82,7 +82,7 @@ test('the traffic of a session is on a timeline, at widths the server accepts', 
 }) => {
   await signIn(page)
   await startSearch(page)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 
   const widths: string[] = []
   const refused: number[] = []
@@ -119,7 +119,7 @@ test('the traffic of a session is on a timeline, at widths the server accepts', 
 test('a session lists what is around it, at windows the server accepts', async ({ page }) => {
   await signIn(page)
   await startSearch(page)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 
   const windows: string[] = []
   const refused: number[] = []

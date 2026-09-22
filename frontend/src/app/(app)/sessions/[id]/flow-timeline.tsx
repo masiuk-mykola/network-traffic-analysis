@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { tableFeatures, useTable, type ColumnDef as TableColumnDef } from '@tanstack/react-table'
+import { useMemo, useState } from 'react'
 
 import { formatBytes, formatCount, formatTimeOfDay } from '@lib/format'
 import {
   bucketChoices,
   defaultBucket,
   toSeries,
+  type FlowColumn,
   type FlowMetric,
   type FlowSeries,
 } from '@lib/session/flow'
@@ -14,6 +16,8 @@ import { useFlow } from '@lib/session/use-flow'
 import { cn } from '@lib/utils'
 import { EmptyState, ErrorState, LoadingState } from '@/components/states'
 import { Button } from '@/components/ui'
+
+const features = tableFeatures({})
 
 /** Half the plot belongs to each direction, so a column never crosses the baseline. */
 const HALF_HEIGHT = 44
@@ -177,23 +181,62 @@ function Figures({
   metric: FlowMetric
   bucketMs: number
 }) {
+  // A bucket is a row of three numbers, so the numbers behind the picture are a real table; the
+  // header is for a screen reader only, because the picture above already carries the labels.
+  const columns = useMemo<TableColumnDef<typeof features, FlowColumn>[]>(
+    () => [
+      {
+        id: 'when',
+        header: 'Time',
+        cell: ({ row }) => (
+          <span className="text-muted">
+            {formatTimeOfDay(new Date(row.original.t).toISOString())}
+          </span>
+        ),
+      },
+      { id: 'up', header: 'Up', cell: ({ row }) => `${amount(row.original.up, metric)} up` },
+      {
+        id: 'down',
+        header: 'Down',
+        cell: ({ row }) => `${amount(row.original.down, metric)} down`,
+      },
+    ],
+    [metric],
+  )
+
+  const table = useTable({ features, columns, data: series.columns })
+
   return (
     <details className="border-border rounded-lg border">
       <summary className="text-muted cursor-pointer px-3 py-2 text-xs">
         {formatCount(series.columns.length)} buckets of {labelFor(bucketMs)}, as numbers
       </summary>
-      <ul className="divide-border max-h-48 divide-y overflow-y-auto">
-        {series.columns.map((column) => (
-          <li
-            key={column.t}
-            tabIndex={0}
-            className="focus-visible:bg-accent/10 px-3 py-1.5 text-xs"
-          >
-            <span className="text-muted">{formatTimeOfDay(new Date(column.t).toISOString())}</span>{' '}
-            {amount(column.up, metric)} up · {amount(column.down, metric)} down
-          </li>
-        ))}
-      </ul>
+      <div className="max-h-48 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="sr-only">
+            {table.getHeaderGroups().map((group) => (
+              <tr key={group.id}>
+                {group.headers.map((header) => (
+                  <th key={header.id} scope="col">
+                    <table.FlexRender header={header} />
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-border divide-y">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} tabIndex={0} className="focus-visible:bg-accent/10">
+                {row.getAllCells().map((cell) => (
+                  <td key={cell.id} className="px-3 py-1.5">
+                    <table.FlexRender cell={cell} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
   )
 }

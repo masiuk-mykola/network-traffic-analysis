@@ -104,10 +104,12 @@ describe('FlowTimeline', () => {
     renderTimeline()
     await screen.findByText(/in buckets of/)
 
-    const rows = screen.getAllByRole('listitem')
+    // The header row is there for a screen reader only; the bucket rows are the focusable ones.
+    const rows = screen.getAllByRole('row').filter((row) => row.hasAttribute('tabindex'))
     expect(rows).toHaveLength(SAMPLES.length)
     expect(rows[0]).toHaveAttribute('tabindex', '0')
-    expect(rows[0]).toHaveTextContent(/up ·/)
+    expect(rows[0]).toHaveTextContent(/up/)
+    expect(rows[0]).toHaveTextContent(/down/)
   })
 
   it('says a session too short to plot is too short to plot', async () => {

@@ -103,7 +103,7 @@ test('a fifteen-second access token is never the reader’s problem', async ({ p
   await page.waitForTimeout(18_000)
   await startSearch(page)
 
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 30_000 })
   await expect(page).toHaveURL(/\/search/)
   // The renewal happens on the server: nothing is explained to the reader, because nothing broke.
   await expect(

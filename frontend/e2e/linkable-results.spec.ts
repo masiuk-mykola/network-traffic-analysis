@@ -17,7 +17,7 @@ async function runToEnd(page: Page) {
   await signIn(page)
   await startSearch(page)
   await expect(page.getByText('Search finished')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
 }
 
 const firstRowText = (page: Page) => page.getByRole('row').nth(1).innerText()
@@ -29,7 +29,7 @@ test('a finished search can be re-ordered, and the address says so', async ({ pa
   await page.getByRole('button', { name: /bytes/i }).click()
 
   await expect(page).toHaveURL(/sort=-bytes/)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('columnheader', { name: /bytes/i })).toHaveAttribute(
     'aria-sort',
     'descending',
@@ -41,7 +41,7 @@ test('the address restores the same order without starting a second search', asy
   await runToEnd(page)
   await page.getByRole('button', { name: /bytes/i }).click()
   await expect(page).toHaveURL(/sort=-bytes/)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
   const ordered = await firstRowText(page)
   const shared = page.url()
 
@@ -54,7 +54,7 @@ test('the address restores the same order without starting a second search', asy
 
   await page.goto(shared)
 
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
   expect(await firstRowText(page)).toBe(ordered)
   expect(created).toEqual([])
 })
@@ -63,7 +63,7 @@ test('a row opens its session, and coming back keeps the order and the rows', as
   await runToEnd(page)
   await page.getByRole('button', { name: /risk/i }).click()
   await expect(page).toHaveURL(/sort=-risk/)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
   const ordered = await firstRowText(page)
 
   await page.getByRole('row').nth(1).click()
@@ -77,7 +77,7 @@ test('a row opens its session, and coming back keeps the order and the rows', as
   await page.goBack()
 
   await expect(page).toHaveURL(/sort=-risk/)
-  await expect(page.getByRole('table')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('grid')).toBeVisible({ timeout: 20_000 })
   expect(await firstRowText(page)).toBe(ordered)
   expect(reread).toEqual([])
 })
@@ -89,6 +89,6 @@ test('an address naming a search the server does not have explains itself', asyn
 
   await expect(page.getByText('Search not found')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/run it again/i)).toBeVisible()
-  await expect(page.getByRole('table')).toHaveCount(0)
+  await expect(page.getByRole('grid')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Run search' })).toBeEnabled()
 })

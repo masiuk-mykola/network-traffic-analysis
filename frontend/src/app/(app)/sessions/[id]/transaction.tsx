@@ -1,9 +1,26 @@
+'use client'
+
+import { tableFeatures, useTable, type ColumnDef as TableColumnDef } from '@tanstack/react-table'
+import { useMemo } from 'react'
+
 import { EMPTY, formatByColumnType, isRedacted } from '@lib/format'
 import { splitDecoded } from '@lib/session/described'
+import { cn } from '@lib/utils'
 import type { components } from '@api/schema'
 import { EmptyState } from '@/components/states'
 
 type SchemaField = components['schemas']['SchemaField']
+
+const features = tableFeatures({})
+
+/** One row of the transaction: what the server calls it, and what it decoded. */
+type FieldRow = {
+  path: string
+  label: string
+  note: string | undefined
+  values: string[]
+  monospace: boolean
+}
 
 /**
  * The decoded transaction: the server's own labels, in the server's own order, and beneath them
@@ -21,6 +38,30 @@ export function Transaction({
 }) {
   const { described, undescribed } = splitDecoded(decoded, fields ?? [])
 
+  const describedRows = useMemo<FieldRow[]>(
+    () =>
+      described.map((field) => ({
+        path: field.path,
+        label: field.title,
+        note: noteFor(field.sensitive, field.unit, field.values),
+        values: field.values.map((value) => formatByColumnType(field.type, value)),
+        monospace: false,
+      })),
+    [described],
+  )
+
+  const undescribedRows = useMemo<FieldRow[]>(
+    () =>
+      undescribed.map((entry) => ({
+        path: entry.path,
+        label: entry.path,
+        note: undefined,
+        values: [formatByColumnType('text', entry.value)],
+        monospace: true,
+      })),
+    [undescribed],
+  )
+
   if (described.length === 0 && undescribed.length === 0) {
     return (
       <EmptyState
@@ -34,16 +75,7 @@ export function Transaction({
     <div className="space-y-6">
       {described.length > 0 ? (
         <section aria-label="Transaction" className="border-border rounded-lg border">
-          <dl className="divide-border divide-y">
-            {described.map((field) => (
-              <Row
-                key={field.path}
-                label={field.title}
-                note={noteFor(field.sensitive, field.unit, field.values)}
-                values={field.values.map((value) => formatByColumnType(field.type, value))}
-              />
-            ))}
-          </dl>
+          <FieldTable caption="Transaction" rows={describedRows} />
         </section>
       ) : null}
 
@@ -55,16 +87,7 @@ export function Transaction({
               : 'Decoded, but not part of the published description of this protocol.'}
           </p>
           <div className="border-border rounded-lg border">
-            <dl className="divide-border divide-y">
-              {undescribed.map((entry) => (
-                <Row
-                  key={entry.path}
-                  label={entry.path}
-                  values={[formatByColumnType('text', entry.value)]}
-                  monospace
-                />
-              ))}
-            </dl>
+            <FieldTable caption="Not described by the schema" rows={undescribedRows} />
           </div>
         </section>
       ) : null}
@@ -83,26 +106,75 @@ function noteFor(
   return unit
 }
 
-function Row({
-  label,
-  note,
-  values,
-  monospace,
-}: {
-  label: string
-  note?: string | undefined
-  values: string[]
-  monospace?: boolean
-}) {
+/**
+ * Label and value, as a two-column table. The label is the row's own header (`th scope="row"`), so
+ * a screen reader still reads "label: value" the way the description list it replaced did.
+ */
+function FieldTable({ caption, rows }: { caption: string; rows: FieldRow[] }) {
+  const columns = useMemo<TableColumnDef<typeof features, FieldRow>[]>(
+    () => [
+      {
+        id: 'label',
+        header: 'Field',
+        cell: ({ row }) => (
+          <>
+            {row.original.label}
+            {row.original.note ? (
+              <span className="text-warning ml-2 text-xs">{row.original.note}</span>
+            ) : null}
+          </>
+        ),
+      },
+      {
+        id: 'value',
+        header: 'Value',
+        cell: ({ row }) =>
+          row.original.values.length === 0
+            ? EMPTY
+            : row.original.values.map((value, index) => <p key={index}>{value}</p>),
+      },
+    ],
+    [],
+  )
+
+  const table = useTable({ features, columns, data: rows })
+
   return (
-    <div className="grid gap-1 px-4 py-2 sm:grid-cols-[14rem_1fr] sm:gap-4">
-      <dt className={monospace ? 'text-muted font-mono text-xs' : 'text-muted text-sm'}>
-        {label}
-        {note ? <span className="text-warning ml-2 text-xs">{note}</span> : null}
-      </dt>
-      <dd className="space-y-0.5 text-sm break-words">
-        {values.length === 0 ? EMPTY : values.map((value, index) => <p key={index}>{value}</p>)}
-      </dd>
-    </div>
+    <table className="w-full text-left">
+      <caption className="sr-only">{caption}</caption>
+      <thead className="sr-only">
+        {table.getHeaderGroups().map((group) => (
+          <tr key={group.id}>
+            {group.headers.map((header) => (
+              <th key={header.id} scope="col">
+                <table.FlexRender header={header} />
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody className="divide-border divide-y">
+        {table.getRowModel().rows.map((row) => {
+          const [label, value] = row.getAllCells()
+          if (!label || !value) return null
+          return (
+            <tr key={row.id} className="align-top">
+              <th
+                scope="row"
+                className={cn(
+                  'w-56 px-4 py-2 font-normal',
+                  row.original.monospace ? 'text-muted font-mono text-xs' : 'text-muted text-sm',
+                )}
+              >
+                <table.FlexRender cell={label} />
+              </th>
+              <td className="space-y-0.5 px-4 py-2 text-sm break-words">
+                <table.FlexRender cell={value} />
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }

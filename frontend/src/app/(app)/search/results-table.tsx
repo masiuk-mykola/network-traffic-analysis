@@ -1,9 +1,18 @@
 'use client'
 
+import { tableFeatures, useTable, type ColumnDef as TableColumnDef } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 
 import type { components } from '@api/schema'
 import { formatCount } from '@lib/format'
@@ -25,6 +34,16 @@ const OVERSCAN = 8
 const LOAD_AHEAD = 12
 const SCROLLER_HEIGHT = 448
 
+/**
+ * Sorting and paging are the server's, and the address bar is where the order lives, so none of the
+ * row-model features are turned on: they would hold a second copy of a state this screen does not
+ * own. The table is used for what it does own here — the column model built from `/v1/meta/columns`
+ * and the rendering of headers and cells.
+ */
+const features = tableFeatures({})
+
+const EMPTY_ROWS: SessionRow[] = []
+
 export function ResultsTable({
   searchId,
   status,
@@ -45,17 +64,83 @@ export function ResultsTable({
   const results = useResults(known ? searchId : null, running, sort)
   const scroller = useRef<HTMLDivElement>(null)
 
-  const rows = results.data?.pages.flatMap((page) => page.items) ?? []
+  // Both of these are read by every rendered row, so they are kept stable: a fresh array each
+  // render would re-render the whole window on any parent change.
+  const published = columns.data
+  const visible = useMemo(
+    () => (published ?? []).filter((column) => column.default_visible),
+    [published],
+  )
+  const pages = results.data?.pages
+  const rows = useMemo(() => pages?.flatMap((page) => page.items) ?? EMPTY_ROWS, [pages])
+
+  const tableColumns = useMemo<TableColumnDef<typeof features, SessionRow>[]>(
+    () =>
+      visible.map((column) => ({
+        id: column.key,
+        header: column.label,
+        // A published key names something to show, not a field on the row; `rowValue` is that map.
+        cell: ({ row }) => rowValue(row.original, column),
+      })),
+    [visible],
+  )
+
+  const table = useTable({ features, columns: tableColumns, data: rows })
+
   const complete = results.data?.pages.at(-1)?.complete ?? false
+  const modelRows = table.getRowModel().rows
 
   const virtual = useVirtualizer({
-    count: rows.length,
+    count: modelRows.length,
     getScrollElement: () => scroller.current,
     estimateSize: () => ROW_HEIGHT,
+    getItemKey: (index) => modelRows[index]?.id ?? index,
     overscan: OVERSCAN,
     // Used until the scroller can be measured, which is also the case in an environment with no
     // layout at all; without it the window would be empty rather than merely approximate.
     initialRect: { width: 1024, height: SCROLLER_HEIGHT },
+  })
+
+  // Rows are interactive and there are a hundred thousand of them, so the table carries one tab
+  // stop and the arrows move it. Tabbing through every loaded row instead would be a trap.
+  const [focused, setFocused] = useState(0)
+  const takeFocus = useRef(false)
+
+  const moveFocus = useCallback(
+    (next: number) => {
+      const last = rows.length - 1
+      const clamped = Math.min(Math.max(next, 0), last)
+      takeFocus.current = true
+      setFocused(clamped)
+      // The row may be outside the window, and an unmounted row cannot be focused.
+      virtual.scrollToIndex(clamped)
+    },
+    [rows.length, virtual],
+  )
+
+  const onKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      const moves: Record<string, number | undefined> = {
+        ArrowDown: focused + 1,
+        ArrowUp: focused - 1,
+        Home: 0,
+        End: rows.length - 1,
+      }
+      const next = moves[event.key]
+      if (next === undefined) return
+      event.preventDefault()
+      moveFocus(next)
+    },
+    [focused, moveFocus, rows.length],
+  )
+
+  // Focus follows the roving index, but only when a key moved it: stealing focus on a re-render
+  // would pull it out of the form above while a search is still filling the table.
+  useEffect(() => {
+    if (!takeFocus.current) return
+    takeFocus.current = false
+    const element = scroller.current?.querySelector<HTMLElement>(`[data-row-index="${focused}"]`)
+    element?.focus()
   })
 
   // Asking for the next page is a side effect, so it belongs in an effect: doing it while
@@ -78,8 +163,6 @@ export function ResultsTable({
     return <ErrorState error={results.error} onRetry={() => void results.refetch()} />
   }
 
-  const visible = (columns.data ?? []).filter((column) => column.default_visible)
-
   if (rows.length === 0) {
     return running ? (
       <LoadingState label="Still looking — no sessions have matched yet" />
@@ -92,7 +175,7 @@ export function ResultsTable({
   }
 
   return (
-    <section aria-label="Results" className="space-y-2">
+    <section className="space-y-2">
       <div className="text-muted flex items-baseline justify-between text-xs">
         <p>{formatCount(rows.length)} loaded</p>
         {running ? <p>More may still arrive.</p> : null}
@@ -100,35 +183,44 @@ export function ResultsTable({
 
       <div className="border-border overflow-hidden rounded-lg border">
         <div
-          role="table"
+          role="grid"
+          aria-label="Results"
           aria-rowcount={rows.length}
+          onKeyDown={onKeyDown}
           className="w-full overflow-x-auto text-sm"
           style={{ minWidth: 'min-content' }}
         >
-          <div role="row" className="border-border bg-surface/60 flex border-b font-medium">
-            {visible.map((column) => (
-              <HeaderCell
-                key={column.key}
-                column={column}
-                running={running}
-                sort={sort}
-                onSortChange={onSortChange}
-              />
-            ))}
-          </div>
+          {table.getHeaderGroups().map((group) => (
+            <div
+              key={group.id}
+              role="row"
+              className="border-border bg-surface/60 flex border-b font-medium"
+            >
+              {group.headers.map((header) => (
+                <HeaderCell
+                  key={header.id}
+                  column={byId(visible, header.column.id)}
+                  running={running}
+                  sort={sort}
+                  onSortChange={onSortChange}
+                />
+              ))}
+            </div>
+          ))}
 
           <div ref={scroller} className="overflow-y-auto" style={{ height: SCROLLER_HEIGHT }}>
             <div style={{ height: virtual.getTotalSize(), position: 'relative' }}>
               {virtual.getVirtualItems().map((item) => {
-                const row = rows[item.index]
+                const row = modelRows[item.index]
                 if (!row) return null
                 return (
                   <Row
                     key={row.id}
-                    row={row}
+                    row={row.original}
                     columns={visible}
                     top={item.start}
                     index={item.index}
+                    focused={item.index === focused}
                   />
                 )
               })}
@@ -161,7 +253,14 @@ export function ResultsTable({
   )
 }
 
-function HeaderCell({
+/** The table knows the column by its id; the width and what may be sorted are the server's own. */
+function byId(columns: ColumnDef[], id: string): ColumnDef {
+  const found = columns.find((column) => column.key === id)
+  if (!found) throw new Error(`No published column named ${id}`)
+  return found
+}
+
+const HeaderCell = memo(function HeaderCell({
   column,
   running,
   sort,
@@ -176,6 +275,11 @@ function HeaderCell({
   const sortable = column.sortable && sortFieldFor(column.key) !== null
   const direction = sortable ? directionOf(sort, column.key) : null
 
+  const onClick = useCallback(
+    () => onSortChange(toggleSort(sort, column.key)),
+    [onSortChange, sort, column.key],
+  )
+
   const label = (
     <span className="truncate" style={{ width: column.width_hint }}>
       {column.label}
@@ -189,7 +293,7 @@ function HeaderCell({
           type="button"
           disabled={running}
           title={running ? 'A different order needs a finished search' : undefined}
-          onClick={() => onSortChange(toggleSort(sort, column.key))}
+          onClick={onClick}
           className={cn(
             'flex w-full items-center gap-1 text-left',
             'hover:text-accent disabled:cursor-not-allowed disabled:opacity-60',
@@ -207,23 +311,28 @@ function HeaderCell({
       )}
     </div>
   )
-}
+})
 
-function Row({
+const Row = memo(function Row({
   row,
   columns,
   top,
   index,
+  focused,
 }: {
   row: SessionRow
   columns: ColumnDef[]
   top: number
   index: number
+  /** The one row holding the table's tab stop. */
+  focused: boolean
 }) {
   return (
     <Link
       role="row"
       aria-rowindex={index + 1}
+      data-row-index={index}
+      tabIndex={focused ? 0 : -1}
       href={`/sessions/${row.id}`}
       className={cn(
         'border-border hover:bg-accent/5 focus-visible:ring-ring/50 absolute flex w-full border-b',
@@ -234,7 +343,7 @@ function Row({
       {columns.map((column) => (
         <div
           key={column.key}
-          role="cell"
+          role="gridcell"
           className="truncate px-3 py-2"
           style={{ width: column.width_hint, flexShrink: 0 }}
         >
@@ -243,4 +352,4 @@ function Row({
       ))}
     </Link>
   )
-}
+})

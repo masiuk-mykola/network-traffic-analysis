@@ -229,7 +229,9 @@ describe('SessionView', () => {
     renderView(session({ decoded: V2_DECODED, decoder: 'dns/2' }))
 
     const transaction = await screen.findByRole('region', { name: 'Transaction' })
-    const labels = [...transaction.querySelectorAll('dt')].map((node) => node.textContent)
+    const labels = [...transaction.querySelectorAll('th[scope="row"]')].map(
+      (node) => node.textContent,
+    )
     expect(labels).toEqual(['Transaction id', 'Query name', 'Response code', 'Answer'])
     expect(transaction).toHaveTextContent('10.20.0.7')
     expect(transaction).toHaveTextContent('10.20.0.8')

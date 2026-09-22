@@ -1,4 +1,8 @@
+'use client'
+
+import { tableFeatures, useTable, type ColumnDef as TableColumnDef } from '@tanstack/react-table'
 import { ShieldAlert } from 'lucide-react'
+import { useMemo } from 'react'
 
 import type { components } from '@api/schema'
 import { EMPTY, formatDuration } from '@lib/format'
@@ -9,6 +13,8 @@ import { CopyButton } from '@/components/ui'
 type Session = components['schemas']['Session']
 
 const SECOND_MS = 1000
+
+const features = tableFeatures({})
 
 /**
  * A DNS session as the exchange it is: what was asked on one side, what came back on the other,
@@ -126,32 +132,90 @@ function Line({
 }
 
 function RecordSet({ title, items }: { title: string; items: DnsRecord[] }) {
+  // A record set is a real table: every record carries the same four things, so each one is a
+  // column of its own rather than a line of run-together spans.
+  const columns = useMemo<TableColumnDef<typeof features, DnsRecord>[]>(
+    () => [
+      {
+        id: 'type',
+        header: 'Type',
+        cell: ({ row }) => <span className="font-medium">{row.original.type || EMPTY}</span>,
+      },
+      {
+        id: 'name',
+        header: 'Name',
+        cell: ({ row }) => <span className="break-all">{row.original.name || EMPTY}</span>,
+      },
+      {
+        id: 'ttl',
+        header: 'Lives for',
+        cell: ({ row }) =>
+          row.original.ttl === null ? (
+            <span className="text-muted">{EMPTY}</span>
+          ) : (
+            <span className="text-muted text-xs whitespace-nowrap">
+              lives {formatDuration(row.original.ttl * SECOND_MS)}
+            </span>
+          ),
+      },
+      {
+        id: 'data',
+        header: 'Answer',
+        cell: ({ row }) =>
+          row.original.data ? (
+            <span className="text-muted flex items-start gap-1 break-all">
+              {row.original.data}
+              <CopyButton value={row.original.data} label="record data" />
+            </span>
+          ) : (
+            <span className="text-muted">{EMPTY}</span>
+          ),
+      },
+    ],
+    [],
+  )
+
+  const table = useTable({ features, columns, data: items })
+
   return (
     <div className="space-y-1">
-      <p className="text-muted text-xs tracking-wide uppercase">{title}</p>
-      <ul className="border-border divide-border divide-y rounded-lg border">
-        {items.map((record, index) => (
-          <li key={`${record.name}-${record.type}-${index}`} className="px-3 py-2 text-sm">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-medium">{record.type || EMPTY}</span>
-              <span className="break-all">{record.name || EMPTY}</span>
-              {record.ttl === null ? null : (
-                <span className="text-muted text-xs">
-                  lives {formatDuration(record.ttl * SECOND_MS)}
-                </span>
-              )}
-            </div>
-            {record.data ? (
-              <p className="text-muted mt-1 flex items-start gap-1 break-all">
-                {record.data}
-                <CopyButton value={record.data} label="record data" />
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <p className="text-muted text-xs tracking-wide uppercase" id={headingId(title)}>
+        {title}
+      </p>
+      <table
+        aria-labelledby={headingId(title)}
+        className="border-border w-full table-auto rounded-lg border text-sm"
+      >
+        <thead className="sr-only">
+          {table.getHeaderGroups().map((group) => (
+            <tr key={group.id}>
+              {group.headers.map((header) => (
+                <th key={header.id} scope="col">
+                  <table.FlexRender header={header} />
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="divide-border divide-y">
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="align-top">
+              {row.getAllCells().map((cell) => (
+                <td key={cell.id} className="px-3 py-2">
+                  <table.FlexRender cell={cell} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
+}
+
+/** The caption above each set is the table's name; a stable id ties the two together. */
+function headingId(title: string): string {
+  return `dns-records-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
 function Flag({ children, note }: { children: React.ReactNode; note?: string }) {
