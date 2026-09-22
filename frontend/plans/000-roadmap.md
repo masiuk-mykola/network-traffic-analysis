@@ -90,13 +90,20 @@ The main screen. A search is a server-side job: create it, follow it, read it pa
 | 4.4 | ✅ done | The visible columns and the flattened pages are stable across renders, and rows and header cells are memoised. Nothing measured as slow, so no profiler number is claimed — the memoisation is a correctness fix, not a win.                                                                   |
 
 - **Gate:** run after `capture-api admin reset`, because the report accumulates across runs.
-  `calm` — 0 fail ✅. `expiring-tokens` — 0 fail ✅. `doctor` — clean ✅.
-  `storm` — **one check still fails intermittently** (`http.retry_after_violations`, on the search
-  status read). Two causes were found and fixed: the poll interval ignored a `Retry-After` that
-  arrived between ticks (`pollDelay`), and `holdRead` remembered answers but not refusals — the
-  field catalogue is now rationed by its own handler so the server render and the browser share one
-  memory of a refusal. A third case survives and could not be isolated: under a fifth of GETs
-  refused, the specs fail before producing enough traffic to reproduce it on demand.
+  `calm` — 0 fail ✅. `expiring-tokens` — 0 fail ✅. `doctor` — clean ✅. `storm` — 0 fail ✅,
+  three consecutive runs.
+  `http.retry_after_violations` took three attempts. The first two were per-caller: the poll
+  interval ignored a `Retry-After` that arrived between ticks (`pollDelay`), and `holdRead`
+  remembered answers but not refusals (the field catalogue is rationed by its own handler so the
+  server render and the browser share one memory of it). **The third cause was `/v1/me`** — the
+  guard's profile read, not the search read, which is why looking at the search code never found
+  it: `shareProfileRead` shares the read in flight and keeps nothing, so a refusal was forgotten
+  the instant it was thrown. Reproduced deliberately by `e2e/retry-after-gate.ts`
+  (`npm run gate:retry-after`), a traffic generator that asserts nothing and so survives long
+  enough to produce the traffic the specs never could: 12 violations before, 0 after.
+  Fixed at the seam rather than at a third caller — `callApi` remembers a refusal against its route
+  template and waits out the remainder before the next call on that template, which is how the API
+  actually keys its windows (`src/lib/api/advertised-delay.ts`).
 
 ---
 

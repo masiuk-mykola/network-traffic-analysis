@@ -3,10 +3,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 
 import { fetchJson } from '@api/fetch-json'
+import { isHttpError } from '@api/http-error'
 import { searchResultsKey } from '@api/keys'
 import type { components } from '@api/schema'
 
-import { nextPollDelay } from './poll-interval'
+import { pollDelay } from './poll-interval'
 import { DEFAULT_SORT, type SortKey } from './sort'
 
 type SearchResults = components['schemas']['SearchResults']
@@ -52,7 +53,13 @@ export function useResults(
       const last = pages.at(-1)
       // Only while caught up: with a cursor in hand there is a next page to fetch instead.
       if (!last || last.next_cursor !== null || last.complete) return false
-      return nextPollDelay(pages.length)
+      // The tail is its own address and so its own window: a refusal that named a delay outranks
+      // this cadence, which knows nothing about a 503 that arrived between two ticks.
+      const error = state.error
+      const advertised = isHttpError(error)
+        ? { retryAfterMs: error.retryAfterMs, elapsedMs: Date.now() - state.errorUpdatedAt }
+        : undefined
+      return pollDelay(pages.length, advertised)
     },
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,

@@ -43,9 +43,9 @@ async function readSearch(searchId: string | null): Promise<SearchStatus | undef
   if (!searchId) return undefined
 
   try {
-    // Held with no window, so a running job's state is never reused — but a refusal that named a
-    // delay is remembered. The browser polls this same job, and without that memory a navigation
-    // landing inside the advertised delay would ask again on the server, which the API counts.
+    // Held with no window, so a running job's state is never reused: all this shares is the read
+    // in flight, which is worth sharing in its own right. A refusal that named a delay is waited
+    // out underneath, at the seam, because the API's window covers the whole template.
     const data = await holdRead(`searches/${searchId}`, 0, async () => {
       const answer = await callApi({
         path: `/v1/searches/${encodeURIComponent(searchId)}`,

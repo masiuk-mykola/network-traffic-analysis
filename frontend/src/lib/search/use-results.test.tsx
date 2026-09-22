@@ -122,6 +122,42 @@ describe('useResults', () => {
     expect(result.current.hasNextPage).toBe(false)
   })
 
+  it('waits out a delay the server named before reading the tail again', async () => {
+    // The tail has its own address, so it has its own window: a 503 on the results read silences
+    // the results read, and the poll's own cadence knows nothing about it.
+    vi.useFakeTimers()
+    const urls: string[] = []
+    let first = true
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        urls.push(String(input))
+        if (first) {
+          first = false
+          return Response.json(page({ next_cursor: null, complete: false }), { status: 200 })
+        }
+        return Response.json(
+          { code: 'unavailable', detail: 'busy' },
+          { status: 503, headers: { 'retry-after': '4', 'content-type': 'application/json' } },
+        )
+      }),
+    )
+
+    renderHook(() => useResults('srch-1', true), { wrapper })
+
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(1_000)
+    const refusedAt = urls.length
+    expect(refusedAt).toBeGreaterThan(1)
+
+    // The cadence alone would have asked again a second from now; the server asked for four.
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(urls).toHaveLength(refusedAt)
+
+    await vi.advanceTimersByTimeAsync(2_500)
+    expect(urls.length).toBeGreaterThan(refusedAt)
+  })
+
   it('reads the tail while the job runs, and stops once it does not', async () => {
     vi.useFakeTimers()
     const urls = stubFetch([page({ next_cursor: null, complete: false })])

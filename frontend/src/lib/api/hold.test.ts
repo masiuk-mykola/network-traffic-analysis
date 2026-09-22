@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { ApiError } from './client'
 import { holdRead } from './hold'
 
 describe('holdRead', () => {
@@ -39,28 +38,6 @@ describe('holdRead', () => {
 
     await expect(holdRead('d', 1_000, read)).rejects.toThrow('refused')
     await expect(holdRead('d', 1_000, read)).rejects.toThrow('refused')
-    expect(read).toHaveBeenCalledTimes(2)
-  })
-
-  it('holds a refusal that named a delay, rather than asking again inside it', async () => {
-    // The API scores the next identical read as a retry before the advertised delay, and a second
-    // navigation is a second read: the refusal has to outlive the render that saw it.
-    const read = vi.fn(async () => {
-      throw new ApiError(503, { code: 'unavailable', detail: 'busy' }, 3_000)
-    })
-
-    await expect(holdRead('g', 1_000, read)).rejects.toThrow('busy')
-    await expect(holdRead('g', 1_000, read)).rejects.toThrow('busy')
-    expect(read).toHaveBeenCalledOnce()
-  })
-
-  it('asks again once the advertised delay has passed', async () => {
-    const read = vi.fn(async () => {
-      throw new ApiError(503, { code: 'unavailable', detail: 'busy' }, 0)
-    })
-
-    await expect(holdRead('h', 1_000, read)).rejects.toThrow('busy')
-    await expect(holdRead('h', 1_000, read)).rejects.toThrow('busy')
     expect(read).toHaveBeenCalledTimes(2)
   })
 

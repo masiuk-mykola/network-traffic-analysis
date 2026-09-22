@@ -150,22 +150,50 @@ The report accumulates across every run the simulator has served, so it is read 
 Running the same suite under the other chaos profiles is what the `calm` figure cannot tell you:
 
 - **`expiring-tokens`** — 0 fail. Ninety-second access tokens stay invisible to the reader.
-- **`storm`** — one check still fails intermittently: `http.retry_after_violations`, on the search
-  status read. Two causes were found and fixed (below); a third case survives, at about one
-  occurrence per few hundred requests with a fifth of all GETs refused. It could not be isolated to
-  a single caller, because under that profile the specs fail before producing enough traffic to
-  reproduce it on demand. It is written down here rather than left for a reviewer to find.
+- **`storm`** — 0 fail. `http.retry_after_violations` used to fail here intermittently; three
+  consecutive runs of the traffic generator below now report none.
 
-Two real defects came out of running that gate for the first time, both in how an advertised delay
-is remembered rather than in how it is parsed:
+That last check took three attempts, and the first two were aimed at the wrong thing. All three
+causes were the same mistake in different places — a delay heard by one part of the client and not
+by the part that asked next:
 
 - The search poller kept its own cadence — half a second doubling to five — and knew nothing about
-  a `503` that arrived between two ticks, so it could ask again inside a delay the server had named.
-  The interval now takes whichever wait is longer (`pollDelay`).
+  a `503` that arrived between two ticks. The interval now takes whichever wait is longer
+  (`pollDelay`), on the status read and on the results read alike.
 - A read held on the server remembered an answer but not a refusal, so the next render asked again
-  inside the advertised delay. `holdRead` now keeps a refusal for as long as it asked to be left
-  alone, and the field catalogue is rationed by its own handler so the browser and the server render
-  share one memory of it instead of asking independently.
+  inside the advertised delay. The field catalogue is rationed by its own handler so the browser and
+  the server render share one memory of it instead of asking independently.
+- **The third was `/v1/me`, not the search read at all** — which is why looking at the search code
+  never found it. The guard resolves the profile on every navigation, and `shareProfileRead` shares
+  the read _in flight_ and keeps nothing once it settles: a refusal was forgotten the instant it was
+  thrown, and the next navigation asked again 104 ms into a one-second delay.
+
+Reading the server's scoring rule is what turned that around. The window it opens is keyed by
+**route template, per token family, and closed by any later request of any method** — not by the
+address that was refused, and not only by a repeat of the same read. No single caller can honour
+that. So it is honoured once, at `callApi` (`src/lib/api/server.ts`), the one seam every outbound
+call already passes through: a refusal carrying `Retry-After` is remembered against its template
+(`src/lib/api/advertised-delay.ts`, with the templates generated from the API document into
+`src/lib/api/generated/routes.gen.ts`), and the next call on that template waits out the remainder
+before it is sent. The server render, the read proxy, the search write handlers and the replay after
+a token refresh are all covered, and none of them knows the rule.
+
+Two consequences worth stating plainly. The memory is per process: a restart forgets it, and two
+app instances do not share one. And a route handler can now hold a browser request open for up to
+the delay the server asked for — one to three seconds — rather than sending it early and being
+scored; a caller that goes away is let go rather than held.
+
+The check is intermittent, so it is driven deliberately rather than waited for:
+
+```bash
+cd backend && uv run capture-api admin reset
+cd frontend && npm run gate:retry-after          # GATE_PROFILE=forced|storm|expiring-tokens
+cd backend && uv run capture-api report --since 900
+```
+
+`e2e/retry-after-gate.ts` is a traffic generator, not a spec: it asserts nothing, so a refused read
+does not end the run before enough traffic has accumulated. It takes the account's search slots, so
+it runs alone — never beside `npm run test:e2e`.
 
 ## What was broken in what was given
 

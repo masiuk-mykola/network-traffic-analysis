@@ -16,8 +16,9 @@ import { currentSessionId } from '@lib/session'
  * the browser asks for itself. Passed straight through, that second ask is a read the API counts,
  * and a refusal that named a delay becomes a violation of a delay this request never saw.
  *
- * Both readers therefore share one hold, under the key the page uses: it remembers the answer, the
- * read in flight, and a refusal for as long as that refusal asked to be left alone.
+ * Both readers therefore share one hold, under the key the page uses: it remembers the answer and
+ * the read in flight. A refusal that named a delay is waited out underneath, at the seam every
+ * call passes through (`@api/advertised-delay`), so it is not this hold's business.
  */
 const WINDOW_MS = 60_000
 const HOLD_KEY = 'meta/fields'
