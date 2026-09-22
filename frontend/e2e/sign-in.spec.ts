@@ -54,7 +54,10 @@ test('a wrong password is refused without saying whether the email is known', as
 
   await signIn(page, ANALYST.email, 'not-the-password')
 
-  const alert = page.getByRole('alert')
+  // Next's route announcer sits in the body with role="alert" on every page. An unscoped alert
+  // matches it as well as the refusal, which is both ambiguous and hollow: the announcer is empty,
+  // so it satisfies "is visible" and "does not name the email" without the refusal being read.
+  const alert = page.getByRole('main').getByRole('alert')
   await expect(alert).toBeVisible()
   await expect(alert).not.toContainText(ANALYST.email)
   await expect(page).toHaveURL(/\/login/)
@@ -80,7 +83,7 @@ test('the server stops accepting attempts, and the form stops offering them', as
     await page.getByLabel('Password').fill('wrong')
     const button = page.getByRole('button', { name: /sign in|try again in/i })
     if (await button.isEnabled()) await button.click()
-    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('main').getByRole('alert')).toBeVisible()
   }
 
   await expect(page.getByRole('button', { name: /try again in \d+ s/i })).toBeDisabled()
