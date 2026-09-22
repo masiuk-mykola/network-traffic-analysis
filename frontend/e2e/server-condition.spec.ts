@@ -68,7 +68,11 @@ test('an observer sees a sensitive value withheld, not printed', async ({ page }
   await expect(page).toHaveURL(/\/search/)
 
   // An HTTP session: the server replaces its cookie and authorization headers for an observer.
-  await page.goto('/sessions/72057639461191699')
+  // The simulator's clock starts at a fixed moment and runs with the process, and the capture ends
+  // at its "now" — so the newest sessions exist only on a server that has been up for a while. This
+  // one sits well inside the three days a freshly started one already holds; an id copied from a
+  // long-running dev server would be in the future of the container CI starts, and 404 there.
+  await page.goto('/sessions/72057637085118467')
   const main = page.getByRole('main')
   await expect(main.getByText('Withheld for your role').first()).toBeVisible({ timeout: 20_000 })
   await expect(main).not.toContainText('"redacted"')
