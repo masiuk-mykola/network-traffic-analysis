@@ -17,11 +17,7 @@ export type ResultsRequest = {
   signal?: AbortSignal
 }
 
-/**
- * One page of matched sessions, asked for identically wherever it is asked from — the head, a
- * cursor the table followed, or the tail a running job is still adding to. One reader, so those
- * three can never disagree about the limit, the order, or what happens to a cursor.
- */
+/** The one reader for the head, a followed cursor and the tail, so they cannot disagree. */
 export function readResultsPage({
   searchId,
   sort,
@@ -31,7 +27,7 @@ export function readResultsPage({
 }: ResultsRequest): Promise<SearchResults> {
   const query = new URLSearchParams({ limit: String(PAGE_SIZE) })
   if (!isRunning && sort !== DEFAULT_SORT) query.set('sort', sort)
-  // The cursor is opaque and bound to this search: it goes back exactly as it arrived.
+  // Opaque: sent back exactly as it arrived.
   if (cursor) query.set('cursor', cursor)
 
   return fetchJson<SearchResults>(`searches/${encodeURIComponent(searchId)}/results`, {
@@ -41,11 +37,8 @@ export function readResultsPage({
 }
 
 /**
- * Whether a freshly read tail says anything the held one did not.
- *
- * The server appends matches to the end of the job's list and a cursor is a position in it, so a
- * page read at the same cursor can only have grown: the rows it already held cannot change. Equal
- * length therefore means equal rows, and there is nothing to write back.
+ * Matches are only appended, so a page read again at the same cursor can only have grown: equal
+ * length means equal rows.
  */
 export function tailChanged(held: SearchResults, fresh: SearchResults): boolean {
   return (

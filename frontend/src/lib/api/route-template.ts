@@ -1,15 +1,9 @@
 import { ROUTE_TEMPLATES } from './generated/routes.gen'
 
 /**
- * Which template an address belongs to.
- *
- * The API's limits are keyed by route template, not by the address that hit them: a delay named on
- * `/v1/searches/srch_a` covers `/v1/searches/srch_b` and the `DELETE` of either. The client cannot
- * honour a window it cannot name, so every address it is about to send is resolved here first.
- *
- * An address the document does not describe becomes its own window — narrower than the truth,
- * never wider, so an unknown endpoint can only ever be waited for too little rather than a delay
- * being applied to requests it was never given for.
+ * The API keys its limits by route template: a delay named on `/v1/searches/srch_a` also covers
+ * `/v1/searches/srch_b`. An address the document does not describe is its own template, so a delay
+ * is never applied more widely than it was given.
  */
 const SEGMENTS: ReadonlyArray<readonly [string, readonly string[]]> = ROUTE_TEMPLATES.map(
   (template) => [template, template.split('/')] as const,
@@ -26,8 +20,7 @@ export function routeTemplate(path: string): string {
     if (segments.length !== parts.length) continue
 
     const literals = countLiteralMatches(segments, parts)
-    // A literal segment beats a placeholder, so `/v1/enrich/ips` wins over `/v1/enrich/ips/{ip}`
-    // would if they were ever the same length.
+    // With equal lengths, the template with more literal segments is the more specific one.
     if (literals > bestLiterals) {
       best = template
       bestLiterals = literals

@@ -12,19 +12,12 @@ import { DEFAULT_SORT, type SortKey } from './sort'
 export { PAGE_SIZE } from './results-page'
 
 /**
- * Pages of matched sessions. Rows arrive while the search still runs, so a page can end three ways:
- * with a cursor (there is more now), without one while the job runs (caught up — ask again later),
- * or without one once it is complete (that was everything).
+ * Pages of matched sessions. A page ends with a cursor (more now), without one while the job runs
+ * (caught up — `useResultTail` polls that last page alone), or without one once complete. Filled
+ * pages never change, so nothing here goes stale.
  *
- * Only the first is a next page. The middle case would spin an infinite query, so it is left to
- * `useResultTail`, which reads the last page alone. Refetching the query itself would re-read every
- * page the table has loaded, in order, on every tick — and a page the job has already filled cannot
- * change, because matches are appended and a cursor is a position in them. That is also why nothing
- * here goes stale: the only page that moves is the tail, and the tail is kept fresh separately.
- *
- * The order is part of the key, never a parameter of the same query: a cursor belongs to the order
- * it was issued in, and the server rejects it in any other. It is also asked for only once the job
- * has finished — sorting a running search is refused, and a refused request is scored against us.
+ * The order is in the key because a cursor belongs to the order it was issued in; it is sent only
+ * to a finished job, since sorting a running one is refused.
  */
 export function useResults(
   searchId: string | null,
@@ -42,12 +35,11 @@ export function useResults(
     enabled: Boolean(searchId),
     refetchOnWindowFocus: false,
     staleTime: Infinity,
-    // A new order of the same search keeps the old rows on screen until its first page lands, so
-    // the table does not blink out. Another search's rows are never carried over.
+    // Old rows stay up while a new order of the same search loads; another search's never do.
     placeholderData: (previous, previousQuery) =>
       previousQuery?.queryKey[1] === (searchId ?? '') ? previous : undefined,
   })
-  // Those rows belong to the old order, and so do their cursors: nothing may page from them.
+  // Those rows' cursors belong to the old order.
   const settled = !results.isPlaceholderData
 
   const tail = useResultTail({
@@ -59,9 +51,7 @@ export function useResults(
     dataUpdatedAt: results.dataUpdatedAt,
   })
 
-  // A refused tail read is the results read failing, and the screen reports it where the rows are.
-  // Its retry re-arms whichever read stopped: the next page when there is a cursor to follow, the
-  // tail when there is not — never the pages behind them, which cannot have changed.
+  // A retry re-arms whichever read stopped — the next page or the tail, never the settled pages.
   return {
     ...results,
     error: results.error ?? tail.error,

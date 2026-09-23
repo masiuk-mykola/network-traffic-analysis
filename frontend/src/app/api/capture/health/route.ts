@@ -7,16 +7,9 @@ import { hasSession, SessionGone } from '@api/session-store'
 import { currentSessionId } from '@lib/session'
 
 /**
- * How the server says it is.
- *
- * This sits in front of the read proxy for one path, because this read must be rationed rather than
- * passed on: the API grades the median gap between health reads at ten seconds, and every tab, every
- * navigation and every mount would otherwise ask again. The answer is the same for everyone, so one
- * answer is kept here and handed out until it goes stale.
- *
- * Rationing a result is not enough on its own: several screens asking at once would all miss an
- * empty cache and all go upstream, which is how a "cached" read still arrives at the API in pairs.
- * The read in flight is therefore shared, exactly as the profile read is.
+ * Rationed rather than proxied: the API grades the gap between health reads (10 s median), and every
+ * tab and mount would ask. One answer is held for everyone, and the read in flight is shared so
+ * simultaneous misses do not go upstream in pairs.
  */
 const WINDOW_MS = 30_000
 
@@ -29,8 +22,7 @@ const store = globalThis as typeof globalThis & {
 
 export async function GET() {
   try {
-    // The held answer is behind the same door as every other read: whoever asks needs a session,
-    // even when the answer is already in hand.
+    // A held answer still needs a session.
     if (!hasSession(await currentSessionId())) throw new SessionGone()
 
     const held = store.__captureHealth
@@ -47,7 +39,6 @@ export async function GET() {
   }
 }
 
-/** One read at a time, whatever asks: the second caller waits for the first one's answer. */
 function read(): Promise<unknown> {
   store.__captureHealthInFlight ??= callApi({
     path: '/v1/health',

@@ -13,12 +13,9 @@ import { currentSessionId } from '@lib/session'
 export type Profile = components['schemas']['Profile']
 
 /**
- * The signed-in profile, or a redirect to sign in. Only a missing session or a refusal from the API
- * counts as "not signed in": anything else — the API being down, a timeout, a contract failure —
- * is rethrown so the error boundary can offer a retry instead of throwing a working session away.
- *
- * The cookie is read outside the try on purpose; reading it is what marks the route dynamic, and
- * swallowing that signal would render every guarded screen as if nobody were signed in.
+ * The signed-in profile, or a redirect to sign in. Only a missing session or a 401 redirects; any
+ * other failure goes to the error boundary rather than throwing a working session away. The cookie
+ * is read outside the try: that read marks the route dynamic, and catching it would break that.
  */
 export async function requireProfile(destination: string): Promise<Profile> {
   const sessionId = await currentSessionId()
@@ -34,11 +31,8 @@ export async function requireProfile(destination: string): Promise<Profile> {
 }
 
 /**
- * The identity behind a session, read once per request however many server components ask for it.
- *
- * The guard renders in the layout and the screen below it renders in the same pass, so both want
- * the profile: `shareProfileRead` only shares a read still in flight, and the API counts a repeat
- * that arrives after the first has settled.
+ * Once per request: the layout's guard and the screen both ask, and `shareProfileRead` only shares a
+ * read still in flight — the API counts a repeat after the first has settled.
  */
 const readProfile = cache((sessionId: string): Promise<Profile> =>
   shareProfileRead(sessionId, async () => {

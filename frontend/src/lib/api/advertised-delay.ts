@@ -3,21 +3,9 @@ import 'server-only'
 import { routeTemplate } from './route-template'
 
 /**
- * What the server asked us to wait, remembered where every caller passes.
- *
- * A `429` or `503` carrying `Retry-After` opens a window the API scores against us: any later
- * request on the same route template, of any method, sent before the delay has passed, is counted
- * as a retry. The window belongs to the template and the signed-in session — not to a search, a
- * screen, a hook or a cache entry — so no single caller can honour it. Two attempts at this were
- * made per-caller and both left a third case behind; a memory that lives at the seam instead
- * covers the server render, the read proxy, the write handlers and the replay after a refresh with
- * one rule none of them has to know.
- *
- * It is deliberately a wait rather than a refusal: the delays are one to three seconds, and a
- * cancellation that happens a moment late is better than one that has to be clicked twice.
- *
- * Per-process, like `hold`: a restart forgets, and two instances do not share. That is accepted —
- * what is graded is one reader within one session.
+ * Delays the server named in `Retry-After`, per session and route template. The API counts any
+ * request on that template inside the window as a retry, whoever sends it, so no single caller can
+ * honour it — the memory lives here, where every server call passes. Per-process, like `hold`.
  */
 const delays = globalThis as typeof globalThis & { __captureDelays?: Map<string, number> }
 
@@ -26,7 +14,6 @@ function windowKey(sessionId: string, path: string): string {
   return `${sessionId}\u0000${routeTemplate(path)}`
 }
 
-/** Remember a delay the server named. A refusal that named none changes nothing. */
 export function rememberDelay(sessionId: string, path: string, retryAfterMs: number | null): void {
   if (retryAfterMs === null || retryAfterMs <= 0) return
 
@@ -38,11 +25,7 @@ export function rememberDelay(sessionId: string, path: string, retryAfterMs: num
   if (open === undefined || until > open) delays.__captureDelays.set(key, until)
 }
 
-/**
- * Hold until whatever the server asked for has passed. Resolves at once when nothing was asked.
- * A caller that goes away is let go rather than held: the request it was waiting for is one nobody
- * is listening for any more.
- */
+/** A wait rather than a refusal: the delays are a few seconds. An aborted caller is let go. */
 export async function awaitDelay(
   sessionId: string,
   path: string,
