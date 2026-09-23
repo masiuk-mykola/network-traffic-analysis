@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { defaultWindow, WINDOW_HOURS } from './window'
+import { defaultWindow, WINDOW_HOURS, WINDOW_PRESETS } from './window'
 
 const sensor = (id: string, lastPacketAt: string | undefined) => ({
   id,
@@ -46,5 +46,33 @@ describe('defaultWindow', () => {
     ])
 
     expect(window?.to).toBe('2025-10-27T09:00:00.000Z')
+  })
+
+  it('opens a span of the asked length before the same end', () => {
+    const sensors = [sensor('hq-core', '2025-10-27T12:00:00.000Z')]
+
+    expect(defaultWindow(sensors, 1)).toEqual({
+      from: '2025-10-27T11:00:00.000Z',
+      to: '2025-10-27T12:00:00.000Z',
+    })
+    expect(defaultWindow(sensors, 24)?.from).toBe('2025-10-26T12:00:00.000Z')
+  })
+
+  it('offers the default span among its presets', () => {
+    expect(WINDOW_PRESETS).toContain(WINDOW_HOURS)
+  })
+
+  it('opens a span of the asked length before the same end', () => {
+    const sensors = [sensor('hq-core', '2025-10-27T12:00:00.000Z')]
+
+    expect(defaultWindow(sensors, 1)).toEqual({
+      from: '2025-10-27T11:00:00.000Z',
+      to: '2025-10-27T12:00:00.000Z',
+    })
+    expect(defaultWindow(sensors, 24)?.from).toBe('2025-10-26T12:00:00.000Z')
+  })
+
+  it('offers the default span among its presets', () => {
+    expect(WINDOW_PRESETS).toContain(WINDOW_HOURS)
   })
 })

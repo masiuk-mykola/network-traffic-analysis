@@ -120,6 +120,21 @@ describe('QueryForm', () => {
     await waitFor(() => expect(to).toHaveValue('2025-10-27T12:00'))
   })
 
+  it('offers spans that end at the last traffic, and marks the one in use', async () => {
+    renderForm(async () => Response.json(SENSORS, { status: 200 }))
+
+    const lastDay = await screen.findByRole('button', { name: 'Last 24 h' })
+    await waitFor(() => expect(lastDay).toBeEnabled())
+    expect(screen.getByRole('button', { name: 'Last 6 h' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(lastDay)
+
+    expect(screen.getByLabelText('From (UTC)')).toHaveValue('2025-10-26T12:00')
+    expect(screen.getByLabelText('To (UTC)')).toHaveValue('2025-10-27T12:00')
+    expect(lastDay).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(window.location.search).toContain('from=2025-10-26T12'))
+  })
+
   it('mirrors the choices into the address bar without a round trip', async () => {
     renderForm(async () => Response.json(SENSORS, { status: 200 }))
     await screen.findByText('HQ Core')

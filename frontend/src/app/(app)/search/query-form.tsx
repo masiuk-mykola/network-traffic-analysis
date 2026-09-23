@@ -18,9 +18,10 @@ import { useSearch } from '@lib/search/use-search'
 import type { SearchStatus } from '@lib/search/search-state'
 import { useSensors } from '@lib/search/use-sensors'
 import { useDebounced } from '@lib/use-debounced'
-import { defaultWindow } from '@lib/search/window'
+import { defaultWindow, WINDOW_PRESETS } from '@lib/search/window'
+import { DateTimePicker } from '@/components/form/date-time-picker'
 import { Field } from '@/components/form/field'
-import { Input } from '@/components/ui'
+import { Button } from '@/components/ui'
 
 import { ConditionBuilder } from './condition-builder'
 import { EstimateLine } from './estimate-line'
@@ -53,15 +54,18 @@ export function QueryForm({
   const [state, setState] = useState<QueryState>(initial)
 
   const items = useMemo(() => sensors.data?.items ?? [], [sensors.data])
+  const anchors = useMemo(() => {
+    const chosen = items.filter((sensor) => state.sensorIds.includes(sensor.id))
+    return chosen.length > 0 ? chosen : items
+  }, [items, state.sensorIds])
 
   // The window is derived rather than seeded: the traffic ends in the past, so until someone picks
   // one, the right default is the last moment these points reported.
   const query = useMemo((): QueryState => {
     if (state.from && state.to) return state
-    const chosen = items.filter((sensor) => state.sensorIds.includes(sensor.id))
-    const suggested = defaultWindow(chosen.length > 0 ? chosen : items)
+    const suggested = defaultWindow(anchors)
     return suggested ? { ...state, ...suggested } : state
-  }, [state, items])
+  }, [state, anchors])
 
   // The endpoint allows only a few requests per second, so it is asked about a settled query.
   // Both hooks run before any early return, or their order would change between renders.
@@ -124,26 +128,43 @@ export function QueryForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="From (UTC)">
           {(props) => (
-            <Input
+            <DateTimePicker
               {...props}
-              type="datetime-local"
-              step="1"
-              value={toLocalInput(query.from)}
-              onChange={(event) => setState({ ...query, from: fromLocalInput(event.target.value) })}
+              calendarLabel="Pick the start"
+              value={query.from}
+              onChange={(from) => setState({ ...query, from })}
             />
           )}
         </Field>
         <Field label="To (UTC)">
           {(props) => (
-            <Input
+            <DateTimePicker
               {...props}
-              type="datetime-local"
-              step="1"
-              value={toLocalInput(query.to)}
-              onChange={(event) => setState({ ...query, to: fromLocalInput(event.target.value) })}
+              calendarLabel="Pick the end"
+              value={query.to}
+              onChange={(to) => setState({ ...query, to })}
             />
           )}
         </Field>
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Window presets">
+        {WINDOW_PRESETS.map((hours) => {
+          const preset = defaultWindow(anchors, hours)
+          const current = preset?.from === query.from && preset?.to === query.to
+          return (
+            <Button
+              key={hours}
+              variant={current ? 'secondary' : 'ghost'}
+              size="sm"
+              disabled={!preset}
+              aria-pressed={current}
+              onClick={() => preset && setState({ ...query, ...preset })}
+            >
+              Last {hours} h
+            </Button>
+          )
+        })}
       </div>
 
       {query.to ? (
@@ -194,18 +215,4 @@ export function QueryForm({
       />
     </form>
   )
-}
-
-/** `datetime-local` speaks the browser's zone; everything here is UTC, so convert explicitly. */
-function toLocalInput(iso: string | null): string {
-  if (!iso) return ''
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toISOString().slice(0, 19)
-}
-
-function fromLocalInput(value: string): string | null {
-  if (!value) return null
-  const parsed = Date.parse(`${value}Z`)
-  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString()
 }
