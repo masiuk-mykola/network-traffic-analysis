@@ -42,14 +42,20 @@ export function useResults(
     enabled: Boolean(searchId),
     refetchOnWindowFocus: false,
     staleTime: Infinity,
+    // A new order of the same search keeps the old rows on screen until its first page lands, so
+    // the table does not blink out. Another search's rows are never carried over.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === (searchId ?? '') ? previous : undefined,
   })
+  // Those rows belong to the old order, and so do their cursors: nothing may page from them.
+  const settled = !results.isPlaceholderData
 
   const tail = useResultTail({
     searchId,
     sort,
     isRunning,
     queryKey,
-    pages: results.data,
+    pages: settled ? results.data : undefined,
     dataUpdatedAt: results.dataUpdatedAt,
   })
 
@@ -60,7 +66,12 @@ export function useResults(
     ...results,
     error: results.error ?? tail.error,
     isError: results.isError || tail.isError,
+    hasNextPage: settled && results.hasNextPage,
+    fetchNextPage: async () => {
+      if (settled) await results.fetchNextPage()
+    },
     retry: () => {
+      if (!settled) return
       if (results.hasNextPage) void results.fetchNextPage()
       else void tail.refetch()
     },

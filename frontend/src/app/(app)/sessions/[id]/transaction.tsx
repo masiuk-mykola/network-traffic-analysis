@@ -140,8 +140,14 @@ function FieldTable({ caption, rows }: { caption: string; rows: FieldRow[] }) {
   const table = useTable({ features, columns, data: rows })
 
   return (
-    <table className="w-full text-left">
+    // Fixed layout, so a value with no place to break (a hash, a body preview) wraps inside its
+    // column instead of widening the table past its frame.
+    <table className="w-full table-fixed text-left">
       <caption className="sr-only">{caption}</caption>
+      <colgroup>
+        <col className="w-32 sm:w-56" />
+        <col />
+      </colgroup>
       <thead className="sr-only">
         {table.getHeaderGroups().map((group) => (
           <tr key={group.id}>
@@ -162,13 +168,13 @@ function FieldTable({ caption, rows }: { caption: string; rows: FieldRow[] }) {
               <th
                 scope="row"
                 className={cn(
-                  'w-56 px-4 py-2 font-normal',
+                  'px-4 py-2 font-normal break-words',
                   row.original.monospace ? 'text-muted font-mono text-xs' : 'text-muted text-sm',
                 )}
               >
                 <table.FlexRender cell={label} />
               </th>
-              <td className="space-y-0.5 px-4 py-2 text-sm break-words">
+              <td className="space-y-0.5 px-4 py-2 text-sm [overflow-wrap:anywhere]">
                 <table.FlexRender cell={value} />
               </td>
             </tr>

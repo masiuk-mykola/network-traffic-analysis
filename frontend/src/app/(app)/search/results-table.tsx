@@ -88,7 +88,9 @@ export function ResultsTable({
 
   const table = useTable({ features, columns: tableColumns, data: rows })
 
-  const complete = results.data?.pages.at(-1)?.complete ?? false
+  // Rows of the previous order, held while the new one loads: shown, but no longer the answer.
+  const resorting = results.isPlaceholderData
+  const complete = !resorting && (results.data?.pages.at(-1)?.complete ?? false)
   const modelRows = table.getRowModel().rows
 
   const virtual = useVirtualizer({
@@ -144,6 +146,16 @@ export function ResultsTable({
     element?.focus()
   })
 
+  // A new order is a new list: it is read from the top, with the tab stop on its first row.
+  const changeSort = useCallback(
+    (next: SortKey) => {
+      virtual.scrollToOffset(0)
+      setFocused(0)
+      onSortChange(next)
+    },
+    [onSortChange, virtual],
+  )
+
   // Asking for the next page is a side effect, so it belongs in an effect: doing it while
   // rendering fires twice in development and can ask for the same cursor more than once.
   const lastVisible = virtual.getVirtualItems().at(-1)?.index ?? -1
@@ -178,7 +190,7 @@ export function ResultsTable({
   return (
     <section className="space-y-2">
       <div className="text-muted flex items-baseline justify-between text-xs">
-        <p>{formatCount(rows.length)} loaded</p>
+        <p>{resorting ? 'Sorting…' : `${formatCount(rows.length)} loaded`}</p>
         {running ? <p>More may still arrive.</p> : null}
       </div>
 
@@ -187,6 +199,7 @@ export function ResultsTable({
           role="grid"
           aria-label="Results"
           aria-rowcount={rows.length}
+          aria-busy={resorting}
           onKeyDown={onKeyDown}
           className="w-full overflow-x-auto text-sm"
           style={{ minWidth: 'min-content' }}
@@ -203,13 +216,20 @@ export function ResultsTable({
                   column={byId(visible, header.column.id)}
                   running={running}
                   sort={sort}
-                  onSortChange={onSortChange}
+                  onSortChange={changeSort}
                 />
               ))}
             </div>
           ))}
 
-          <div ref={scroller} className="overflow-y-auto" style={{ height: SCROLLER_HEIGHT }}>
+          <div
+            ref={scroller}
+            className={cn(
+              'overflow-y-auto transition-opacity duration-150',
+              resorting && 'pointer-events-none opacity-50',
+            )}
+            style={{ height: SCROLLER_HEIGHT }}
+          >
             <div style={{ height: virtual.getTotalSize(), position: 'relative' }}>
               {virtual.getVirtualItems().map((item) => {
                 const row = modelRows[item.index]

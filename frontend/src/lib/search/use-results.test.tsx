@@ -127,6 +127,61 @@ describe('useResults', () => {
     expect(urls[1]).toContain('sort=risk')
   })
 
+  it('keeps the rows of the old order on screen while the new one loads, but pages none of them', async () => {
+    const cursor = 'cursor-from-the-other-order'
+    let answerRisk: (() => void) | undefined
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        urls.push(String(input))
+        if (String(input).includes('sort=risk')) {
+          await new Promise<void>((resolve) => (answerRisk = resolve))
+          return Response.json(page({ items: [{ id: '2', summary: 'two' }] }), { status: 200 })
+        }
+        return Response.json(page({ next_cursor: cursor, complete: false }), { status: 200 })
+      }),
+    )
+
+    const { result, rerender } = renderHook(({ sort }) => useResults('srch-1', false, sort), {
+      wrapper,
+      initialProps: { sort: '-ts' as SortKey },
+    })
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true))
+
+    rerender({ sort: 'risk' })
+    await waitFor(() => expect(urls).toHaveLength(2))
+
+    // The table has something to stand on, and says it is being replaced.
+    expect(result.current.isPending).toBe(false)
+    expect(result.current.isPlaceholderData).toBe(true)
+    expect(result.current.data?.pages[0]?.items).toEqual([ROW])
+    // Its cursor belongs to the old order; following it in the new one would be refused.
+    expect(result.current.hasNextPage).toBe(false)
+    await result.current.fetchNextPage()
+    result.current.retry()
+    expect(urls).toHaveLength(2)
+
+    answerRisk?.()
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false))
+    expect(result.current.data?.pages[0]?.items).toEqual([{ id: '2', summary: 'two' }])
+  })
+
+  it('does not carry one search’s rows into another', async () => {
+    stubFetch([page()])
+
+    const { result, rerender } = renderHook(({ id }) => useResults(id, false), {
+      wrapper,
+      initialProps: { id: 'srch-1' },
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    rerender({ id: 'srch-2' })
+
+    expect(result.current.isPending).toBe(true)
+    expect(result.current.data).toBeUndefined()
+  })
+
   it('treats a caught-up page as no next page', async () => {
     stubFetch([page({ next_cursor: null, complete: false })])
 

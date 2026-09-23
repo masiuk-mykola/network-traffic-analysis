@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MISSING, type SearchStatus } from '@lib/search/search-state'
@@ -233,6 +234,45 @@ describe('ResultsTable', () => {
     await userEvent.click(screen.getByRole('button', { name: /bytes/i }))
 
     expect(changes).toEqual(['-bytes'])
+  })
+
+  it('keeps the table on screen while a new order loads, and says it is sorting', async () => {
+    let answer: (() => void) | undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('meta/columns')) return Response.json(COLUMNS, { status: 200 })
+        if (url.includes('sort=-bytes')) {
+          await new Promise<void>((resolve) => (answer = resolve))
+          return Response.json(page([row('2')]), { status: 200 })
+        }
+        return Response.json(page([row('1')]), { status: 200 })
+      }),
+    )
+    function Sorted() {
+      const [sort, setSort] = useState<SortKey>('-ts')
+      return <ResultsTable searchId="srch-1" status={finished} sort={sort} onSortChange={setSort} />
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <Sorted />
+      </QueryClientProvider>,
+    )
+    await screen.findByText('session 1')
+
+    await userEvent.click(screen.getByRole('button', { name: /bytes/i }))
+
+    const grid = screen.getByRole('grid')
+    expect(grid).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('session 1')).toBeInTheDocument()
+    expect(screen.getByText('Sorting…')).toBeInTheDocument()
+
+    answer?.()
+    expect(await screen.findByText('session 2')).toBeInTheDocument()
+    expect(screen.getByRole('grid')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByText('session 1')).not.toBeInTheDocument()
   })
 
   it('marks the order in force and offers no control on the other columns', async () => {
